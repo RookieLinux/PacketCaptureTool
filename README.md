@@ -58,7 +58,7 @@
 
 ```bash
 # 克隆仓库
-git clone <repository-url>
+git clone https://github.com/RookieLinux/PacketCaptureTool
 cd PacketCaptureTool
 
 # 配置并构建
