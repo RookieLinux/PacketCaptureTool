@@ -20,7 +20,6 @@ void FilterEngine::processPacket(const RawPacketOfTool& packet)
 {
     bool matchesProtocol = false;
     
-    // Check transport layer filter
     bool passesTransportFilter = false;
     switch (m_transportFilter) {
         case TransportProtocol::UDP:
@@ -36,13 +35,10 @@ void FilterEngine::processPacket(const RawPacketOfTool& packet)
     }
     
     if (!passesTransportFilter) {
-        // Packet doesn't pass transport filter, don't emit signal
         return;
     }
     
-    // Check if packet matches protocol configuration
     if (m_hasProtocolConfig) {
-        // Check protocol type
         bool protocolTypeMatches = false;
         if (packet.protocol == TransportProtocol::UDP && m_protocolConfig.transportType == TransportProtocol::UDP) {
             protocolTypeMatches = true;
@@ -50,8 +46,7 @@ void FilterEngine::processPacket(const RawPacketOfTool& packet)
             protocolTypeMatches = true;
         }
         
-        // Check port
-        bool portMatches = (packet.destPort == m_protocolConfig.port || 
+        bool portMatches = (packet.destPort == m_protocolConfig.port ||
                            packet.sourcePort == m_protocolConfig.port);
         
         matchesProtocol = protocolTypeMatches && portMatches;

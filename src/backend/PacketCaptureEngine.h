@@ -8,14 +8,9 @@
 #include <QThread>
 #include <QMutex>
 #include "DataTypes.h"
-
-// Forward declarations for PcapPlusPlus
-namespace pcpp {
-    class PcapLiveDevice;
-    class PcapFileWriterDevice;
-    class PcapFileReaderDevice;
-    class RawPacket;
-}
+#include "PcapLiveDevice.h"
+#include "PcapFileDevice.h"
+#include "RawPacket.h"
 
 class PacketCaptureEngine : public QObject
 {

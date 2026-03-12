@@ -5,38 +5,38 @@ project(PacketCaptureTool VERSION 1.0.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Qt6 configuration
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
-set(CMAKE_AUTOUIC ON)
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
+set(CMAKE_PREFIX_PATH CACHE "/opt/Qt/Qt6.6.2/6.6.2/gcc_64/" FORCE)
+set(FLUENTUI_BUILD_EXAMPLES OFF CACHE BOOL "Disable FluentUI examples" FORCE)
+set(FLUENTUI_QML_PLUGIN_DIRECTORY "${CMAKE_BINARY_DIR}/qml/FluentUI" CACHE PATH "Path to FluentUI plugin" FORCE)
+
+include(GitCheck)
+include(ThirdParty)
 
 if (CMAKE_HOST_UNIX)
     configure_file(
-            ${CMAKE_CURRENT_SOURCE_DIR}/.cmake/build_info.h.in
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/build_info.h
+            cmake/build_info.h.in
+            ${PROJECT_SOURCE_DIR}/src/build_info.h
     )
 else (CMAKE_HOST_WIN32)
     configure_file(
-            ${CMAKE_CURRENT_SOURCE_DIR}\\.cmake\\build_info.h.in
-            ${CMAKE_CURRENT_SOURCE_DIR}\\src\\build_info.h
+            ${PROJECT_SOURCE_DIR}\\cmake\\build_info.h.in
+            ${PROJECT_SOURCE_DIR}\\src\\build_info.h
     )
 endif ()
 
 # Find Qt6 packages (minimum version 6.4)
-find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2)
-
-# Find PcapPlusPlus
-find_package(PkgConfig REQUIRED)
-set(ENV{PKG_CONFIG_PATH}
-    "/usr/local/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}"
-)
-pkg_check_modules(PCAPPLUSPLUS REQUIRED PcapPlusPlus)
+find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 Network)
 
 # Include directories
-include_directories(
-    ${CMAKE_SOURCE_DIR}/src/backend
-    ${CMAKE_SOURCE_DIR}/src/ui
-    ${PCAPPLUSPLUS_INCLUDE_DIRS}
+include_directories(SYSTEM BEFORE
+    ${PcapPlusPlus_SOURCE_DIR}/Common++/header
+    ${PcapPlusPlus_SOURCE_DIR}/Packet++/header
+    ${PcapPlusPlus_SOURCE_DIR}/Pcap++/header
+)
+include_directories(BEFORE
+    ${PROJECT_SOURCE_DIR}/src/backend
+    ${PROJECT_SOURCE_DIR}/src/ui
 )
 
 # Source files
@@ -71,6 +71,13 @@ add_executable(${PROJECT_NAME}
     ${QML_RESOURCES}
 )
 
+# Enable Qt-specific automatic build tools for this target
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    AUTOMOC ON
+    AUTORCC ON
+    AUTOUIC ON
+)
+
 # Link libraries
 target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Core
@@ -78,12 +85,10 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Qml
     Qt6::Quick
     Qt6::QuickControls2
-    ${PCAPPLUSPLUS_LIBRARIES}
-)
-
-# Link directories for PcapPlusPlus
-target_link_directories(${PROJECT_NAME} PRIVATE
-    ${PCAPPLUSPLUS_LIBRARY_DIRS}
+    Qt6::Network
+    Common++
+    Packet++
+    Pcap++
 )
 
 # Compiler flags

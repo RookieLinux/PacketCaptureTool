@@ -1,12 +1,12 @@
 #include "PacketCaptureEngine.h"
-#include <pcapplusplus/PcapLiveDevice.h>
-#include <pcapplusplus/PcapLiveDeviceList.h>
-#include <pcapplusplus/PcapFileDevice.h>
-#include <pcapplusplus/EthLayer.h>
-#include <pcapplusplus/IPv4Layer.h>
-#include <pcapplusplus/TcpLayer.h>
-#include <pcapplusplus/UdpLayer.h>
-#include <pcapplusplus/Packet.h>
+#include "PcapLiveDevice.h"
+#include "PcapLiveDeviceList.h"
+#include "PcapFileDevice.h"
+#include "EthLayer.h"
+#include "IPv4Layer.h"
+#include "TcpLayer.h"
+#include "UdpLayer.h"
+#include "Packet.h"
 #include <QDateTime>
 #include <QNetworkInterface>
 #include <memory>
@@ -69,7 +69,6 @@ QList<NetworkInterface> PacketCaptureEngine::getAvailableInterfaces()
             interfaces.append(iface);
         }
     } catch (const std::exception& e) {
-        // Log error but return empty list
         qWarning() << "Error getting network interfaces:" << e.what();
     }
 
@@ -86,11 +85,9 @@ void PacketCaptureEngine::onPacketArrivesStatic(pcpp::RawPacket* rawPacket, [[__
 
 bool PacketCaptureEngine::startCapture(const QString& interfaceName, QString& errorMsg)
 {
-    // Stop any existing capture
     stopCapture();
 
     try {
-        // Find the device
         std::string devName = interfaceName.toStdString();
         pcpp::PcapLiveDevice* dev = pcpp::PcapLiveDeviceList::getInstance().getDeviceByIpOrName(devName);
 
@@ -99,7 +96,6 @@ bool PacketCaptureEngine::startCapture(const QString& interfaceName, QString& er
             return false;
         }
 
-        // Try to open the device
         if (!dev->open()) {
             errorMsg = QString("Cannot open device %1").arg(interfaceName);
             return false;
@@ -107,7 +103,6 @@ bool PacketCaptureEngine::startCapture(const QString& interfaceName, QString& er
 
         // Set the packet capture callback
         m_captureDevice = dev;
-
         // Start capturing (non-blocking)
         dev->startCapture(onPacketArrivesStatic, this);
         m_isCapturing = true;
@@ -145,7 +140,6 @@ bool PacketCaptureEngine::saveToPcap(const QString& filePath, QString& errorMsg)
             return false;
         }
 
-        // Create a PCAP file writer
         std::string filePathStr = filePath.toStdString();
         pcpp::PcapFileWriterDevice writer(filePathStr);
 
@@ -154,9 +148,7 @@ bool PacketCaptureEngine::saveToPcap(const QString& filePath, QString& errorMsg)
             return false;
         }
 
-        // Write all captured packets
         for (const auto& packet : m_capturedPackets) {
-            // Convert our packet to PcapPlusPlus format and write
             struct timeval tv;
             tv.tv_sec = packet.timestamp / 1000000;
             tv.tv_usec = packet.timestamp % 1000000;
@@ -188,7 +180,6 @@ bool PacketCaptureEngine::loadFromPcap(const QString& filePath, QString& errorMs
 
         pcpp::RawPacket rawPacket;
         while (reader->getNextPacket(rawPacket)) {
-            // Parse the raw packet
             RawPacketOfTool parsedPacket;
             if (parseRawPacketOfTool(&rawPacket, parsedPacket)) {
                 m_capturedPackets.append(parsedPacket);
@@ -214,13 +205,10 @@ void PacketCaptureEngine::onPacketArrived(pcpp::RawPacket* rawPacket)
 {
     RawPacketOfTool parsedPacket;
     if (parseRawPacketOfTool(rawPacket, parsedPacket)) {
-        // Add to captured packets list
         {
             QMutexLocker locker(&m_packetsMutex);
             m_capturedPackets.append(parsedPacket);
         }
-
-        // Emit signal
         emit packetCaptured(parsedPacket);
     }
 }
@@ -228,44 +216,34 @@ void PacketCaptureEngine::onPacketArrived(pcpp::RawPacket* rawPacket)
 bool PacketCaptureEngine::parseRawPacketOfTool(pcpp::RawPacket* rawPacket, RawPacketOfTool& result)
 {
     try {
-        // Parse the packet
         pcpp::Packet parsedPacket(rawPacket);
 
-        // Get timestamp
         result.timestamp = rawPacket->getPacketTimeStamp().tv_sec * 1000000LL +
-                          rawPacket->getPacketTimeStamp().tv_nsec/1000; // Convert to microseconds
-
-        // Get packet data
+                          rawPacket->getPacketTimeStamp().tv_nsec/1000;
         result.data = QByteArray(reinterpret_cast<const char*>(rawPacket->getRawData()),
                                 rawPacket->getRawDataLen());
         result.length = rawPacket->getRawDataLen();
-
-        // Initialize with default values
         result.sourceIP = "0.0.0.0";
         result.destIP = "0.0.0.0";
         result.sourcePort = 0;
         result.destPort = 0;
         result.protocol = TransportProtocol::UDP; // Default
 
-        // Parse Ethernet layer
         pcpp::EthLayer* ethLayer = parsedPacket.getLayerOfType<pcpp::EthLayer>();
         if (!ethLayer) {
-            // Check if it's SLL (Linux Cooked Capture)
             if (rawPacket->getLinkLayerType() != pcpp::LINKTYPE_LINUX_SLL) {
-                return false; // Not an Ethernet or SLL packet
+                return false;
             }
         }
 
-        // Parse IP layer
         pcpp::IPv4Layer* ipLayer = parsedPacket.getLayerOfType<pcpp::IPv4Layer>();
         if (!ipLayer) {
-            return false; // Not an IPv4 packet
+            return false;
         }
 
         result.sourceIP = QString::fromStdString(ipLayer->getSrcIPAddress().toString());
         result.destIP = QString::fromStdString(ipLayer->getDstIPAddress().toString());
 
-        // Parse transport layer
         pcpp::TcpLayer* tcpLayer = parsedPacket.getLayerOfType<pcpp::TcpLayer>();
         pcpp::UdpLayer* udpLayer = parsedPacket.getLayerOfType<pcpp::UdpLayer>();
 
@@ -278,7 +256,6 @@ bool PacketCaptureEngine::parseRawPacketOfTool(pcpp::RawPacket* rawPacket, RawPa
             result.sourcePort = udpLayer->getSrcPort();
             result.destPort = udpLayer->getDstPort();
         } else {
-            // Not TCP or UDP
             return false;
         }
 
