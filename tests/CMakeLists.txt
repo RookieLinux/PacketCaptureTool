@@ -4,43 +4,45 @@ find_package(Qt6 REQUIRED COMPONENTS Test)
 # Enable Qt Test
 set(CMAKE_AUTOMOC ON)
 
-# Include backend directory for headers
-include_directories(${CMAKE_SOURCE_DIR}/src/backend)
+include_directories(SYSTEM BEFORE
+        ${PcapPlusPlus_SOURCE_DIR}/Common++/header
+        ${PcapPlusPlus_SOURCE_DIR}/Packet++/header
+        ${PcapPlusPlus_SOURCE_DIR}/Pcap++/header
+)
+include_directories(${PROJECT_SOURCE_DIR}/src/backend)
 
-# Test executable for basic tests
+# Test1
 add_executable(PacketCaptureTests
     test_packetcapture.cpp
-    ${CMAKE_SOURCE_DIR}/src/backend/PacketCaptureEngine.cpp
-    ${CMAKE_SOURCE_DIR}/src/backend/CaptureController.cpp
-    ${CMAKE_SOURCE_DIR}/src/backend/PacketModel.cpp
-    ${CMAKE_SOURCE_DIR}/src/backend/FilterEngine.cpp
-    ${CMAKE_SOURCE_DIR}/src/backend/ProtocolParser.cpp
-    ${CMAKE_SOURCE_DIR}/src/backend/ConfigurationLoader.cpp
+    ${PROJECT_SOURCE_DIR}/src/backend/PacketCaptureEngine.cpp
+    ${PROJECT_SOURCE_DIR}/src/backend/CaptureController.cpp
+    ${PROJECT_SOURCE_DIR}/src/backend/PacketModel.cpp
+    ${PROJECT_SOURCE_DIR}/src/backend/FilterEngine.cpp
+    ${PROJECT_SOURCE_DIR}/src/backend/ProtocolParser.cpp
+    ${PROJECT_SOURCE_DIR}/src/backend/ConfigurationLoader.cpp
 )
 
 target_link_libraries(PacketCaptureTests PRIVATE
     Qt6::Test
     Qt6::Core
-    ${PCAPPLUSPLUS_LIBRARIES}
+    Qt6::Network
+    Common++
+    Packet++
+    Pcap++
 )
 
-target_link_directories(PacketCaptureTests PRIVATE
-    ${PCAPPLUSPLUS_LIBRARY_DIRS}
-)
-
-target_include_directories(PacketCaptureTests PRIVATE
-    ${PCAPPLUSPLUS_INCLUDE_DIRS}
-)
-
-# Test executable for ConfigurationLoader
+# Test2
 add_executable(ConfigurationLoaderTests
     test_configurationloader.cpp
-    ${CMAKE_SOURCE_DIR}/src/backend/ConfigurationLoader.cpp
+    ${PROJECT_SOURCE_DIR}/src/backend/ConfigurationLoader.cpp
 )
 
 target_link_libraries(ConfigurationLoaderTests PRIVATE
     Qt6::Test
     Qt6::Core
+    Common++
+    Packet++
+    Pcap++
 )
 
 # Add tests
