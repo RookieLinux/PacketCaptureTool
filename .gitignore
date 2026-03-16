@@ -1,0 +1,64 @@
+# Build directories
+build/
+build-*/
+cmake-build-*/
+
+# Qt generated files
+*.autosave
+*.user
+*.pro.user
+*.pro.user.*
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+ui_*.h
+*.qm
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+#*.cmake
+
+# Compiled Object files
+*.o
+*.obj
+*.lo
+*.slo
+
+# Compiled Dynamic libraries
+#*.so
+*.dylib
+#*.dll
+
+# Compiled Static libraries
+#*.a
+#*.lib
+*.la
+
+# Executables
+*.exe
+*.out
+*.app
+PacketCaptureTool
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test results
+Testing/
+*.gcov
+*.gcda
+*.gcno
+
+# pcap file
+*.pcap
