@@ -17,8 +17,8 @@ int main(int argc, char *argv[])
     app.setApplicationVersion(SOFTWARE_VERSION);
 
     QQmlApplicationEngine engine;
-    engine.addImportPath(FLUENTUI_QML_DIR);
-    // engine.addImportPath("qrc:/qt/qml");
+    engine.addImportPath(app.applicationDirPath() + "/qml");
+    // engine.addImportPath(FLUENTUI_QML_DIR);
 
     CaptureController* captureController = new CaptureController(&app);
     engine.rootContext()->setContextProperty("captureController", captureController);

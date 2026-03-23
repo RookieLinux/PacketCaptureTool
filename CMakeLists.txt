@@ -32,18 +32,16 @@ if (CMAKE_HOST_WIN32)
 endif ()
 
 set(FLUENTUI_BUILD_EXAMPLES OFF CACHE BOOL "Disable FluentUI examples" FORCE)
-set(FLUENTUI_QML_PLUGIN_DIRECTORY "3rdparty/gitrep/FluentUI/build/qml/FluentUI" CACHE PATH "Path to FluentUI plugin" FORCE)
+set(FLUENTUI_QML_PLUGIN_DIRECTORY "qml/FluentUI" CACHE PATH "Path to FluentUI plugin" FORCE)
 
 configure_file(
     cmake/build_info.h.in
     ${PROJECT_SOURCE_DIR}/src/build_info.h
 )
 
-# Find Qt6 packages (minimum version 6.4)
 find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 QuickDialogs2) #Network
 include(ThirdParty)
 
-# Include directories
 include_directories(SYSTEM BEFORE
     ${PROJECT_SOURCE_DIR}/3rdparty/gitrep/FluentUI/src
     ${PROJECT_SOURCE_DIR}/3rdparty/gitrep/PcapPlusPlus/Common++/header
@@ -61,7 +59,6 @@ include_directories(BEFORE
     ${PROJECT_SOURCE_DIR}/src/ui
 )
 
-# Source files
 set(BACKEND_SOURCES
     src/backend/PacketCaptureEngine.cpp
     src/backend/FilterEngine.cpp
@@ -80,12 +77,10 @@ set(BACKEND_HEADERS
     src/backend/PacketModel.h
 )
 
-# QML resources
 set(QML_RESOURCES
     src/ui/qml.qrc
 )
 
-# Main executable
 add_executable(${PROJECT_NAME}
     src/main.cpp
     ${BACKEND_SOURCES}
@@ -93,14 +88,12 @@ add_executable(${PROJECT_NAME}
     ${QML_RESOURCES}
 )
 
-# Enable Qt-specific automatic build tools for this target
 set_target_properties(${PROJECT_NAME} PROPERTIES
     AUTOMOC ON
     AUTORCC ON
     AUTOUIC ON
 )
 
-# Link libraries
 target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Core
     Qt6::Gui
@@ -116,14 +109,12 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ${PACKET_LIB}
 )
 
-# Compiler flags
 target_compile_options(${PROJECT_NAME} PRIVATE
     -Wall
     -Wextra
     -Wpedantic
 )
 
-#Deal libraries
 if (WIN32)
     if (MSVC)
         if (CMAKE_SIZEOF_VOID_P EQUAL 4)
@@ -135,6 +126,7 @@ if (WIN32)
         file(GLOB_RECURSE 3RDPARTY_DLL_DIR ${PROJECT_SOURCE_DIR}/3rdparty/mingw/*.dll)
     endif ()
 
+    #拷贝第三方库到可执行文件同目录
     if (3RDPARTY_DLL_DIR)
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -191,12 +183,31 @@ if (WIN32)
         add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
             COMMAND "${WINDEPLOYQT_EXECUTABLE}"
             --qmldir "${PROJECT_SOURCE_DIR}/src/ui"
+            --no-translations
             "$<TARGET_FILE:${PROJECT_NAME}>"
             COMMENT "Running windeployqt for ${PROJECT_NAME}"
         )
     else ()
         message(WARNING "WINDEPLOYQT_EXECUTABLE is not set, skipping Qt deployment.")
     endif ()
+
+    # Manual deployment of FluentUI module to the executable directory
+    # This ensures that the module is available for loading at runtime in a standard layout
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_FILE_DIR:${PROJECT_NAME}>/qml/FluentUI"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${PROJECT_BINARY_DIR}/_deps/FluentUI-build/src/qml/FluentUI"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/qml/FluentUI"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${PROJECT_BINARY_DIR}/_deps/FluentUI-build/src/qml/FluentUI/fluentuiplugin.dll"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+        # Ensure dependencies of fluentuiplugin are also deployed to the executable directory
+        COMMAND "${WINDEPLOYQT_EXECUTABLE}"
+        --no-translations
+        --dir "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/qml/FluentUI/fluentuiplugin.dll"
+        COMMENT "Deploying FluentUI QML module and its dependencies"
+    )
 endif ()
 
 # Enable testing
