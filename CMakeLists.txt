@@ -109,87 +109,89 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ${PACKET_LIB}
 )
 
+# Function to deploy dependencies to a target
+function(deploy_dependencies target_name)
+    if (WIN32)
+        # 拷贝第三方库到可执行文件同目录
+        if (MINGW)
+            file(GLOB_RECURSE 3RDPARTY_DLL_DIR ${PROJECT_SOURCE_DIR}/3rdparty/mingw/*.dll)
+        elseif (MSVC)
+            if (CMAKE_SIZEOF_VOID_P EQUAL 4)
+                file(GLOB_RECURSE 3RDPARTY_DLL_DIR ${PROJECT_SOURCE_DIR}/3rdparty/msvc/x86/*.dll)
+            elseif (CMAKE_SIZEOF_VOID_P EQUAL 8)
+                file(GLOB_RECURSE 3RDPARTY_DLL_DIR ${PROJECT_SOURCE_DIR}/3rdparty/msvc/x64/*.dll)
+            endif ()
+        endif ()
+
+        if (3RDPARTY_DLL_DIR)
+            add_custom_command(TARGET ${target_name} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${3RDPARTY_DLL_DIR}
+                $<TARGET_FILE_DIR:${target_name}>
+                COMMENT "Copying third-party runtime DLLs for ${target_name}"
+            )
+        endif ()
+
+        find_file(NPCAP_PACKET_DLL
+                NAMES Packet.dll
+                HINTS
+                ${PCAP_ROOT}
+                ${PCAP_ROOT}/Redist
+                ${PCAP_ROOT}/Bin
+                $ENV{SystemRoot}/System32
+                $ENV{WINDIR}/System32/Npcap
+                PATH_SUFFIXES x64 Win32
+        )
+
+        find_file(NPCAP_WPCAP_DLL
+                NAMES wpcap.dll
+                HINTS
+                ${PCAP_ROOT}
+                ${PCAP_ROOT}/Redist
+                ${PCAP_ROOT}/Bin
+                $ENV{SystemRoot}/System32
+                $ENV{WINDIR}/System32/Npcap
+                PATH_SUFFIXES x64 Win32
+        )
+
+        if (NPCAP_PACKET_DLL)
+            add_custom_command(TARGET ${target_name} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${NPCAP_PACKET_DLL}"
+                $<TARGET_FILE_DIR:${target_name}>
+                COMMENT "Copying Packet.dll for ${target_name}"
+            )
+        endif ()
+
+        if (NPCAP_WPCAP_DLL)
+            add_custom_command(TARGET ${target_name} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${NPCAP_WPCAP_DLL}"
+                $<TARGET_FILE_DIR:${target_name}>
+                COMMENT "Copying wpcap.dll for ${target_name}"
+            )
+        endif ()
+
+        if (Qt6_FOUND AND WINDEPLOYQT_EXECUTABLE)
+            add_custom_command(TARGET ${target_name} POST_BUILD
+                COMMAND "${WINDEPLOYQT_EXECUTABLE}"
+                --no-translations
+                "$<TARGET_FILE:${target_name}>"
+                COMMENT "Running windeployqt for ${target_name}"
+            )
+        endif ()
+    endif ()
+endfunction()
+
 target_compile_options(${PROJECT_NAME} PRIVATE
     -Wall
     -Wextra
     -Wpedantic
 )
 
+# Use function to deploy dependencies
 if (WIN32)
-    if (MSVC)
-        if (CMAKE_SIZEOF_VOID_P EQUAL 4)
-            file(GLOB_RECURSE 3RDPARTY_DLL_DIR ${PROJECT_SOURCE_DIR}/3rdparty/msvc/x86/*.dll)
-        elseif (CMAKE_SIZEOF_VOID_P EQUAL 8)
-            file(GLOB_RECURSE 3RDPARTY_DLL_DIR ${PROJECT_SOURCE_DIR}/3rdparty/msvc/x64/*.dll)
-        endif ()
-    elseif (MINGW)
-        file(GLOB_RECURSE 3RDPARTY_DLL_DIR ${PROJECT_SOURCE_DIR}/3rdparty/mingw/*.dll)
-    endif ()
-
-    #拷贝第三方库到可执行文件同目录
-    if (3RDPARTY_DLL_DIR)
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            ${3RDPARTY_DLL_DIR}
-            $<TARGET_FILE_DIR:${PROJECT_NAME}>
-            COMMENT "Copying third-party runtime DLLs"
-        )
-    endif ()
-    find_file(NPCAP_PACKET_DLL
-            NAMES Packet.dll
-            HINTS
-            ${PCAP_ROOT}
-            ${PCAP_ROOT}/Redist
-            ${PCAP_ROOT}/Bin
-            $ENV{SystemRoot}/System32
-            $ENV{WINDIR}/System32/Npcap
-            PATH_SUFFIXES x64 Win32
-    )
-
-    find_file(NPCAP_WPCAP_DLL
-            NAMES wpcap.dll
-            HINTS
-            ${PCAP_ROOT}
-            ${PCAP_ROOT}/Redist
-            ${PCAP_ROOT}/Bin
-            $ENV{SystemRoot}/System32
-            $ENV{WINDIR}/System32/Npcap
-            PATH_SUFFIXES x64 Win32
-    )
-
-    if (NPCAP_PACKET_DLL)
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${NPCAP_PACKET_DLL}"
-            $<TARGET_FILE_DIR:${PROJECT_NAME}>
-            COMMENT "Copying Packet.dll"
-        )
-    else ()
-        message(WARNING "Packet.dll not found. The application may fail to start unless Npcap runtime is installed and Packet.dll is available in PATH.")
-    endif ()
-
-    if (NPCAP_WPCAP_DLL)
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${NPCAP_WPCAP_DLL}"
-            $<TARGET_FILE_DIR:${PROJECT_NAME}>
-            COMMENT "Copying wpcap.dll"
-        )
-    else ()
-        message(WARNING "wpcap.dll not found. The application may fail to start unless Npcap runtime is installed and wpcap.dll is available in PATH.")
-    endif ()
-
-    if (WINDEPLOYQT_EXECUTABLE)
-        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-            COMMAND "${WINDEPLOYQT_EXECUTABLE}"
-            --qmldir "${PROJECT_SOURCE_DIR}/src/ui"
-            --no-translations
-            "$<TARGET_FILE:${PROJECT_NAME}>"
-            COMMENT "Running windeployqt for ${PROJECT_NAME}"
-        )
-    else ()
-        message(WARNING "WINDEPLOYQT_EXECUTABLE is not set, skipping Qt deployment.")
-    endif ()
+    deploy_dependencies(${PROJECT_NAME})
 
     # Manual deployment of FluentUI module to the executable directory
     # This ensures that the module is available for loading at runtime in a standard layout

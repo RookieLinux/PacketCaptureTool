@@ -29,7 +29,10 @@ target_link_libraries(PacketCaptureTests PRIVATE
     Common++
     Packet++
     Pcap++
+    ${WPCAP_LIB}
+    ${PACKET_LIB}
 )
+deploy_dependencies(PacketCaptureTests)
 
 # Test2
 add_executable(ConfigurationLoaderTests
@@ -43,7 +46,10 @@ target_link_libraries(ConfigurationLoaderTests PRIVATE
     Common++
     Packet++
     Pcap++
+    ${WPCAP_LIB}
+    ${PACKET_LIB}
 )
+deploy_dependencies(ConfigurationLoaderTests)
 
 # Add tests
 add_test(NAME PacketCaptureTests COMMAND PacketCaptureTests)
