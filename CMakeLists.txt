@@ -176,6 +176,7 @@ function(deploy_dependencies target_name)
             add_custom_command(TARGET ${target_name} POST_BUILD
                 COMMAND "${WINDEPLOYQT_EXECUTABLE}"
                 --no-translations
+                --qmldir "${PROJECT_SOURCE_DIR}/src/ui"
                 "$<TARGET_FILE:${target_name}>"
                 COMMENT "Running windeployqt for ${target_name}"
             )
