@@ -9,6 +9,10 @@
 
 int main(int argc, char *argv[])
 {
+#ifdef Q_OS_LINUX
+    qputenv("GIO_USE_VFS", "local");
+    qputenv("DCONF_BEHIND_BACKEND", "memory");
+#endif
     qputenv("QT_QUICK_FLICKABLE_WHEEL_DECELERATION", "1000");
     QGuiApplication app(argc, argv);
 

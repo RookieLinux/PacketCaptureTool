@@ -15,7 +15,7 @@ FluWindow {
         FluApp.init(mainWindow)
     }
 
-    // File dialogs
+    // Config dialogs
     FileDialog {
         id: configFileDialog
         title: qsTr("Select Protocol Configuration File")
@@ -25,7 +25,7 @@ FluWindow {
             captureController.loadProtocolConfig(filePath)
         }
     }
-
+    // Save PCAP file dialogs
     FileDialog {
         id: saveFileDialog
         title: qsTr("Save Packets to PCAP File")
@@ -36,7 +36,7 @@ FluWindow {
             captureController.savePackets(filePath)
         }
     }
-
+    // Load PCAP file dialogs
     FileDialog {
         id: loadFileDialog
         title: qsTr("Load Packets from PCAP File")
@@ -59,7 +59,7 @@ FluWindow {
         anchors.fill: parent
         anchors.topMargin: 0
         spacing: 0
-
+        //control panel
         FluFrame {
             Layout.fillWidth: true
             Layout.preferredHeight: 50
@@ -68,9 +68,7 @@ FluWindow {
             border.width: 0
             border.color: "transparent"
             color: FluTheme.dark ? Qt.rgba(45/255, 45/255, 45/255, 1) : Qt.rgba(249/255, 249/255, 249/255, 1)
-
             RowLayout {
-                anchors.fill: parent
                 spacing: 10
 
                 FluText {
@@ -153,6 +151,7 @@ FluWindow {
 
         // Main content area - FluSplitLayout
         FluSplitLayout {
+            id: mainArea
             Layout.fillWidth: true
             Layout.fillHeight: true
             orientation: Qt.Horizontal
@@ -186,6 +185,7 @@ FluWindow {
                         height: 90
                         
                         Rectangle {
+                            id: selectionHighlight
                             anchors.fill: parent
                             anchors.margins: 2
                             radius: 4
@@ -222,10 +222,10 @@ FluWindow {
                         }
 
                         ColumnLayout {
-                            anchors.fill: parent
-                            anchors.margins: 12
+                            anchors.fill: selectionHighlight
+                            anchors.margins: 10
                             spacing: 6
-
+                            // Top row: Packet number, timestamp, length
                             RowLayout {
                                 Layout.fillWidth: true
                                 
@@ -247,7 +247,7 @@ FluWindow {
                                     font: FluTextStyle.Caption
                                 }
                             }
-
+                            // Middle row: Source and destination
                             RowLayout {
                                 Layout.fillWidth: true
                                 
@@ -270,7 +270,7 @@ FluWindow {
                                     elide: Text.ElideRight
                                 }
                             }
-
+                            // Bottom row: Protocol and validity
                             RowLayout {
                                 Layout.fillWidth: true
                                 
@@ -298,7 +298,7 @@ FluWindow {
             // Right side: Packet details
             FluFrame {
                 id: packetDetailFrame
-                width:anchors.fillWidth - packetListView.width
+                width:mainArea.width - packetListView.width
                 Layout.fillHeight: true
                 padding: 10
                 radius: 0
@@ -377,7 +377,6 @@ FluWindow {
                                                     
                                                     RowLayout {
                                                         anchors.fill: parent
-                                                        
                                                         FluText {
                                                             text: modelData.name || ""
                                                             font: FluTextStyle.BodyStrong
@@ -474,7 +473,6 @@ FluWindow {
             color: FluTheme.dark ? Qt.rgba(30/255, 30/255, 30/255, 1) : Qt.rgba(238/255, 238/255, 238/255, 1)
 
             RowLayout {
-                anchors.fill: parent
                 spacing: 20
 
                 FluText {
