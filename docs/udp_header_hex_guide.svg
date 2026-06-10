@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="820" viewBox="0 0 1400 820">
+  <defs>
+    <style>
+      .bg { fill: #f7f9fc; }
+      .title { font: 700 34px "Segoe UI", Arial, sans-serif; fill: #172033; }
+      .subtitle { font: 16px "Segoe UI", Arial, sans-serif; fill: #526071; }
+      .axis { font: 13px "Consolas", "Courier New", monospace; fill: #5d6878; }
+      .cell { fill: #ffffff; stroke: #263449; stroke-width: 2; }
+      .cell2 { fill: #edf5ff; stroke: #263449; stroke-width: 2; }
+      .cell3 { fill: #fff6df; stroke: #263449; stroke-width: 2; }
+      .payload { fill: #edf8ef; stroke: #263449; stroke-width: 2; stroke-dasharray: 8 5; }
+      .label { font: 700 20px "Segoe UI", Arial, sans-serif; fill: #172033; }
+      .small { font: 14px "Segoe UI", Arial, sans-serif; fill: #4b5668; }
+      .tiny { font: 12px "Consolas", "Courier New", monospace; fill: #39445a; }
+      .hex { font: 700 15px "Consolas", "Courier New", monospace; fill: #1d2b44; }
+      .note { font: 15px "Segoe UI", Arial, sans-serif; fill: #253044; }
+      .legendTitle { font: 700 16px "Segoe UI", Arial, sans-serif; fill: #172033; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1400" height="820"/>
+
+  <text x="70" y="62" class="title">UDP 首部 16 进制报文对照图</text>
+  <text x="70" y="92" class="subtitle">UDP 首部固定 8 字节。网络字节序 Big Endian：每行 32 bit = 4 字节 = 8 个十六进制字符。</text>
+
+  <!-- Bit axis -->
+  <text x="170" y="138" class="axis">bit 0</text>
+  <text x="455" y="138" class="axis">bit 7</text>
+  <text x="520" y="138" class="axis">bit 8</text>
+  <text x="805" y="138" class="axis">bit 15</text>
+  <text x="875" y="138" class="axis">bit 16</text>
+  <text x="1165" y="138" class="axis">bit 23</text>
+  <text x="1230" y="138" class="axis">bit 24</text>
+  <text x="1295" y="138" class="axis">bit 31</text>
+
+  <!-- x0 150, width 1120, half 560, row height 86 -->
+  <text x="70" y="190" class="axis">0x00</text>
+  <rect x="150" y="155" width="560" height="86" class="cell"/>
+  <rect x="710" y="155" width="560" height="86" class="cell2"/>
+  <text x="430" y="192" text-anchor="middle" class="label">源端口 Source Port</text>
+  <text x="430" y="219" text-anchor="middle" class="hex">2 字节 / hex[0..3]</text>
+  <text x="990" y="192" text-anchor="middle" class="label">目的端口 Destination Port</text>
+  <text x="990" y="219" text-anchor="middle" class="hex">2 字节 / hex[4..7]</text>
+
+  <text x="70" y="276" class="axis">0x04</text>
+  <rect x="150" y="241" width="560" height="86" class="cell3"/>
+  <rect x="710" y="241" width="560" height="86" class="cell"/>
+  <text x="430" y="278" text-anchor="middle" class="label">长度 Length</text>
+  <text x="430" y="305" text-anchor="middle" class="hex">2 字节 / UDP 首部 + 数据</text>
+  <text x="990" y="278" text-anchor="middle" class="label">校验和 Checksum</text>
+  <text x="990" y="305" text-anchor="middle" class="hex">2 字节 / IPv4 可为 0，IPv6 必须使用</text>
+
+  <text x="70" y="362" class="axis">0x08</text>
+  <rect x="150" y="327" width="1120" height="88" class="payload"/>
+  <text x="710" y="367" text-anchor="middle" class="label">UDP Payload 应用层数据</text>
+  <text x="710" y="394" text-anchor="middle" class="hex">数据长度 = Length - 8 字节</text>
+
+  <!-- Byte grouping ruler -->
+  <text x="150" y="470" class="legendTitle">按 16 进制报文快速切片</text>
+  <rect x="150" y="492" width="1120" height="78" rx="6" fill="#ffffff" stroke="#c7cfdb"/>
+  <text x="170" y="520" class="tiny">byte offset:</text>
+  <text x="320" y="520" class="tiny">00 01</text>
+  <text x="520" y="520" class="tiny">02 03</text>
+  <text x="720" y="520" class="tiny">04 05</text>
+  <text x="920" y="520" class="tiny">06 07</text>
+  <text x="1120" y="520" class="tiny">08...</text>
+  <text x="170" y="548" class="tiny">field:</text>
+  <text x="320" y="548" class="hex">源端口</text>
+  <text x="520" y="548" class="hex">目的端口</text>
+  <text x="720" y="548" class="hex">UDP 长度</text>
+  <text x="920" y="548" class="hex">校验和</text>
+  <text x="1120" y="548" class="hex">数据</text>
+
+  <text x="150" y="622" class="legendTitle">关键读法</text>
+  <text x="150" y="650" class="note">1. UDP 首部固定 8 字节，没有 TCP 那样的 Data Offset、Flags、Sequence Number、Options。</text>
+  <text x="150" y="676" class="note">2. Length 字段包含 UDP 首部本身：最小值为 8。Payload 长度 = Length - 8。</text>
+  <text x="150" y="702" class="note">3. 多字节字段全部按大端解释：例如端口 00 35 = 53，长度 00 20 = 32 字节。</text>
+  <text x="150" y="728" class="note">4. IPv4 中 UDP Checksum 可以为 00 00；IPv6 中 UDP Checksum 不能省略。</text>
+  <text x="150" y="754" class="note">5. 常见 UDP 应用：DNS 53、DHCP 67/68、NTP 123、QUIC/HTTP3 常用 443。</text>
+</svg>

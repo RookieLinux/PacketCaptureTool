@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="980" viewBox="0 0 1400 980">
+  <defs>
+    <style>
+      .bg { fill: #f7f9fc; }
+      .title { font: 700 34px "Segoe UI", Arial, sans-serif; fill: #172033; }
+      .subtitle { font: 16px "Segoe UI", Arial, sans-serif; fill: #526071; }
+      .axis { font: 13px "Consolas", "Courier New", monospace; fill: #5d6878; }
+      .cell { fill: #ffffff; stroke: #263449; stroke-width: 2; }
+      .cell2 { fill: #edf5ff; stroke: #263449; stroke-width: 2; }
+      .cell3 { fill: #fff6df; stroke: #263449; stroke-width: 2; }
+      .opt { fill: #edf8ef; stroke: #263449; stroke-width: 2; stroke-dasharray: 8 5; }
+      .payload { fill: #f1eefb; stroke: #263449; stroke-width: 2; stroke-dasharray: 8 5; }
+      .label { font: 700 18px "Segoe UI", Arial, sans-serif; fill: #172033; }
+      .small { font: 13px "Segoe UI", Arial, sans-serif; fill: #4b5668; }
+      .tiny { font: 12px "Consolas", "Courier New", monospace; fill: #39445a; }
+      .hex { font: 700 15px "Consolas", "Courier New", monospace; fill: #1d2b44; }
+      .note { font: 15px "Segoe UI", Arial, sans-serif; fill: #253044; }
+      .legendTitle { font: 700 16px "Segoe UI", Arial, sans-serif; fill: #172033; }
+      .flag { font: 700 13px "Segoe UI", Arial, sans-serif; fill: #172033; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1400" height="980"/>
+
+  <text x="70" y="62" class="title">TCP 首部 16 进制报文对照图</text>
+  <text x="70" y="92" class="subtitle">网络字节序 Big Endian：从左到右、从上到下读取。每行 32 bit = 4 字节 = 8 个十六进制字符。</text>
+
+  <!-- Bit axis -->
+  <text x="170" y="138" class="axis">bit 0</text>
+  <text x="455" y="138" class="axis">bit 7</text>
+  <text x="520" y="138" class="axis">bit 8</text>
+  <text x="805" y="138" class="axis">bit 15</text>
+  <text x="875" y="138" class="axis">bit 16</text>
+  <text x="1165" y="138" class="axis">bit 23</text>
+  <text x="1230" y="138" class="axis">bit 24</text>
+  <text x="1295" y="138" class="axis">bit 31</text>
+
+  <!-- Outer grid constants -->
+  <!-- x0 150, width 1120, col 35 per bit, row height 74 -->
+  <text x="70" y="184" class="axis">0x00</text>
+  <rect x="150" y="155" width="560" height="74" class="cell"/>
+  <rect x="710" y="155" width="560" height="74" class="cell2"/>
+  <text x="430" y="188" text-anchor="middle" class="label">源端口 Source Port</text>
+  <text x="430" y="211" text-anchor="middle" class="hex">2 字节 / hex[0..3]</text>
+  <text x="990" y="188" text-anchor="middle" class="label">目的端口 Destination Port</text>
+  <text x="990" y="211" text-anchor="middle" class="hex">2 字节 / hex[4..7]</text>
+
+  <text x="70" y="258" class="axis">0x04</text>
+  <rect x="150" y="229" width="1120" height="74" class="cell"/>
+  <text x="710" y="262" text-anchor="middle" class="label">序列号 Sequence Number</text>
+  <text x="710" y="285" text-anchor="middle" class="hex">4 字节 / hex[8..15]</text>
+
+  <text x="70" y="332" class="axis">0x08</text>
+  <rect x="150" y="303" width="1120" height="74" class="cell2"/>
+  <text x="710" y="336" text-anchor="middle" class="label">确认号 Acknowledgment Number</text>
+  <text x="710" y="359" text-anchor="middle" class="hex">4 字节 / hex[16..23]，ACK=1 时有效</text>
+
+  <text x="70" y="406" class="axis">0x0C</text>
+  <rect x="150" y="377" width="140" height="74" class="cell3"/>
+  <rect x="290" y="377" width="105" height="74" class="cell"/>
+  <rect x="395" y="377" width="35" height="74" class="cell3"/>
+  <rect x="430" y="377" width="315" height="74" class="cell3"/>
+  <rect x="745" y="377" width="525" height="74" class="cell"/>
+  <text x="220" y="406" text-anchor="middle" class="flag">Data</text>
+  <text x="220" y="424" text-anchor="middle" class="flag">Offset</text>
+  <text x="342" y="415" text-anchor="middle" class="flag">Reserved</text>
+  <text x="412" y="415" text-anchor="middle" class="flag">NS</text>
+  <text x="588" y="400" text-anchor="middle" class="label">标志位 Flags</text>
+  <text x="588" y="424" text-anchor="middle" class="tiny">CWR ECE URG ACK PSH RST SYN FIN</text>
+  <text x="1008" y="410" text-anchor="middle" class="label">窗口大小 Window Size</text>
+  <text x="1008" y="433" text-anchor="middle" class="hex">2 字节</text>
+
+  <!-- flag separators -->
+  <line x1="465" y1="377" x2="465" y2="451" stroke="#a87318" stroke-width="1"/>
+  <line x1="500" y1="377" x2="500" y2="451" stroke="#a87318" stroke-width="1"/>
+  <line x1="535" y1="377" x2="535" y2="451" stroke="#a87318" stroke-width="1"/>
+  <line x1="570" y1="377" x2="570" y2="451" stroke="#a87318" stroke-width="1"/>
+  <line x1="605" y1="377" x2="605" y2="451" stroke="#a87318" stroke-width="1"/>
+  <line x1="640" y1="377" x2="640" y2="451" stroke="#a87318" stroke-width="1"/>
+  <line x1="675" y1="377" x2="675" y2="451" stroke="#a87318" stroke-width="1"/>
+  <line x1="710" y1="377" x2="710" y2="451" stroke="#a87318" stroke-width="1"/>
+
+  <text x="70" y="480" class="axis">0x10</text>
+  <rect x="150" y="451" width="560" height="74" class="cell2"/>
+  <rect x="710" y="451" width="560" height="74" class="cell"/>
+  <text x="430" y="484" text-anchor="middle" class="label">校验和 Checksum</text>
+  <text x="430" y="507" text-anchor="middle" class="hex">2 字节</text>
+  <text x="990" y="484" text-anchor="middle" class="label">紧急指针 Urgent Pointer</text>
+  <text x="990" y="507" text-anchor="middle" class="hex">2 字节，URG=1 时有效</text>
+
+  <text x="70" y="554" class="axis">0x14</text>
+  <rect x="150" y="525" width="1120" height="86" class="opt"/>
+  <text x="710" y="562" text-anchor="middle" class="label">Options + Padding 可选项与填充</text>
+  <text x="710" y="588" text-anchor="middle" class="hex">长度 = Data Offset * 4 - 20 字节；无选项时不存在</text>
+
+  <text x="70" y="640" class="axis">可变</text>
+  <rect x="150" y="611" width="1120" height="72" class="payload"/>
+  <text x="710" y="653" text-anchor="middle" class="label">TCP Payload 应用层数据</text>
+
+  <!-- Byte grouping ruler -->
+  <text x="150" y="720" class="legendTitle">按 16 进制报文快速切片</text>
+  <rect x="150" y="742" width="1120" height="60" rx="6" fill="#ffffff" stroke="#c7cfdb"/>
+  <text x="170" y="766" class="tiny">byte offset:</text>
+  <text x="310" y="766" class="tiny">00 01 02 03</text>
+  <text x="520" y="766" class="tiny">04 05 06 07</text>
+  <text x="730" y="766" class="tiny">08 09 0A 0B</text>
+  <text x="940" y="766" class="tiny">0C 0D 0E 0F</text>
+  <text x="1150" y="766" class="tiny">10 11 12 13</text>
+  <text x="170" y="790" class="tiny">hex group:</text>
+  <text x="310" y="790" class="hex">8 个 hex 字符一组</text>
+  <text x="520" y="790" class="hex">固定首部至少 5 组</text>
+  <text x="730" y="790" class="hex">第 13 个字节高 4 bit 是首部长度</text>
+
+  <text x="150" y="840" class="legendTitle">关键读法</text>
+  <text x="150" y="868" class="note">1. TCP 首部最短 20 字节。先从 IP 首部的 Protocol=0x06 确认这是 TCP，再定位 TCP 起始偏移。</text>
+  <text x="150" y="894" class="note">2. Data Offset 是第 12 字节的高 4 bit，单位是 4 字节。例如 0x50 的高 4 bit 为 5，首部长度 5*4=20 字节。</text>
+  <text x="150" y="920" class="note">3. 第 13 字节通常是标志位：0x02=SYN，0x10=ACK，0x18=PSH+ACK，0x11=FIN+ACK，0x04=RST。</text>
+  <text x="150" y="946" class="note">4. 多字节字段全部按大端解释：例如端口 01 BB = 443，窗口 72 10 = 29200。</text>
+</svg>

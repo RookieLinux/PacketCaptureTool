@@ -1,0 +1,32 @@
+{
+    "protocolName": "TestProtocol",
+    "transportType": "UDP",
+    "port": 4430,
+    "length": {
+        "type": "fixed",
+        "fixedValue": 29
+    },
+    "fields": [
+        {
+            "name": "Magic",
+            "offset": 0,
+            "length": 4,
+            "type": "uint32",
+            "endianness": "big"
+        },
+        {
+            "name": "Sequence",
+            "offset": 4,
+            "length": 2,
+            "type": "uint16",
+            "endianness": "big"
+        },
+        {
+            "name": "Payload",
+            "offset": 6,
+            "length": 10,
+            "type": "bytearray",
+            "endianness": "big"
+        }
+    ]
+}
