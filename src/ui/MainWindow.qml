@@ -355,7 +355,7 @@ FluWindow {
             // Right side: Packet details
             FluFrame {
                 id: packetDetailFrame
-                Layout.fillWidth: true
+                width:anchors.fillWidth - packetListView.width
                 Layout.fillHeight: true
                 padding: 10
                 radius: 8
@@ -512,7 +512,7 @@ FluWindow {
                                                 border.color: FluTheme.dark ? Qt.rgba(67/255, 39/255, 38/255, 1) : Qt.rgba(238/255, 217/255, 219/255, 1)
                                                 visible: packetDetailView.packetDetails && packetDetailView.packetDetails.isValid !== undefined && packetDetailView.packetDetails.isValid === false
                                                 implicitWidth: 0
-                                                
+
                                                 RowLayout {
                                                     anchors.fill: parent
                                                     spacing: 10
@@ -542,7 +542,7 @@ FluWindow {
                                                     padding: 10
                                                     radius: 4
                                                     implicitWidth: 0
-                                                    
+
                                                     RowLayout {
                                                         anchors.fill: parent
                                                         
@@ -587,10 +587,10 @@ FluWindow {
                                             FluText {
                                                 Layout.fillWidth: true
                                                 Layout.preferredHeight: 100
-                                                visible: packetDetailView.packetDetails && 
+                                                visible: packetDetailView.packetDetails &&
                                                          packetDetailView.packetDetails.index !== undefined &&
                                                          packetDetailView.packetDetails.isValid === true &&
-                                                         (!packetDetailView.packetDetails.parsedFields || 
+                                                         (!packetDetailView.packetDetails.parsedFields ||
                                                           packetDetailView.packetDetails.parsedFields.length === 0)
                                                 text: qsTr("Protocol matched, but no fields defined in configuration")
                                                 font: FluTextStyle.Body
