@@ -211,6 +211,7 @@ bool PacketCaptureEngine::parseRawPacketOfTool(pcpp::RawPacket* rawPacket, RawPa
         result.data = QByteArray(reinterpret_cast<const char*>(rawPacket->getRawData()),
                                 rawPacket->getRawDataLen());
         result.length = rawPacket->getRawDataLen();
+        result.headerLength = 0;
         result.sourceIP = "0.0.0.0";
         result.destIP = "0.0.0.0";
         result.sourcePort = 0;
@@ -246,6 +247,20 @@ bool PacketCaptureEngine::parseRawPacketOfTool(pcpp::RawPacket* rawPacket, RawPa
         } else {
             return false;
         }
+
+        // Calculate total header length (Eth + IP + Transport)
+        quint32 headerLen = 0;
+        pcpp::Layer* curLayer = parsedPacket.getFirstLayer();
+        while (curLayer != nullptr) {
+            // We sum headers until we reach the payload or a protocol we don't recognize as part of the "headers"
+            // In our case, it's Eth -> IP -> TCP/UDP. The layer after TCP/UDP is usually the payload.
+            headerLen += curLayer->getHeaderLen();
+            if (curLayer->getProtocol() == pcpp::TCP || curLayer->getProtocol() == pcpp::UDP) {
+                break; // Stop after transport layer
+            }
+            curLayer = curLayer->getNextLayer();
+        }
+        result.headerLength = headerLen;
 
         return true;
 

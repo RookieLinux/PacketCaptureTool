@@ -19,8 +19,8 @@ public:
     ParsedPacket parsePacket(const RawPacketOfTool& packet);
 
 private:
-    QVariant extractField(const QByteArray& data, const FieldDefinition& field);
-    int determinePacketLength(const QByteArray& data);
+    QVariant extractField(const QByteArray& data, const FieldDefinition& field, quint32 baseOffset = 0);
+    int determinePacketLength(const QByteArray& data, quint32 baseOffset = 0);
     template<typename T>
     T convertEndianness(T value, Endianness endianness);
 

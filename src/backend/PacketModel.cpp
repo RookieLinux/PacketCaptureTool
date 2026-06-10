@@ -1,4 +1,5 @@
 #include "PacketModel.h"
+#include "ProtocolParser.h"
 
 PacketModel::PacketModel(QObject *parent)
     : QAbstractListModel(parent)
@@ -35,7 +36,7 @@ QVariant PacketModel::data(const QModelIndex& index, int role) const
     case ProtocolRole:
         return static_cast<int>(packet.raw.protocol);
     case LengthRole:
-        return packet.raw.length;
+        return packet.raw.data.length();
     case ParsedFieldsRole: {
         QVariantList fieldsList;
         for (const auto& field : packet.parsed.fields) {
@@ -49,7 +50,7 @@ QVariant PacketModel::data(const QModelIndex& index, int role) const
         return fieldsList;
     }
     case RawDataRole:
-        return QString(packet.raw.data.toHex());
+        return QString::fromLatin1(packet.raw.data.toHex());
     case IsValidRole:
         return packet.parsed.isValid;
     case ErrorMessageRole:
@@ -87,6 +88,20 @@ void PacketModel::addPacket(const RawPacketOfTool& raw, const ParsedPacket& pars
     endInsertRows();
 }
 
+void PacketModel::reparsePackets(ProtocolParser* parser)
+{
+    if (!parser || m_packets.isEmpty())
+        return;
+
+    for (PacketData& packet : m_packets) {
+        packet.parsed = parser->parsePacket(packet.raw);
+    }
+
+    emit dataChanged(index(0, 0),
+                     index(m_packets.count() - 1, 0),
+                     {ParsedFieldsRole, IsValidRole, ErrorMessageRole});
+}
+
 void PacketModel::clear()
 {
     beginResetModel();
@@ -110,10 +125,10 @@ QVariantMap PacketModel::getPacketDetails(int index) const
     result["sourcePort"] = packet.raw.sourcePort;
     result["destPort"] = packet.raw.destPort;
     result["protocol"] = packet.raw.protocol == TransportProtocol::UDP ? "UDP" : "TCP";
-    result["length"] = packet.raw.length;
+    result["length"] = packet.raw.data.length();
     result["isValid"] = packet.parsed.isValid;
     result["errorMessage"] = packet.parsed.errorMessage;
-    result["rawData"] = QString(packet.raw.data);
+    result["rawData"] = QString::fromLatin1(packet.raw.data.toHex());
     
     // Convert parsed fields to QVariantList
     QVariantList fieldsList;

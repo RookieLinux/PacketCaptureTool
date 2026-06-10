@@ -2,6 +2,7 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QQuickStyle>
+#include <QFont>
 #include "CaptureController.h"
 #include "PacketModel.h"
 #include "DataTypes.h"

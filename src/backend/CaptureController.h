@@ -18,6 +18,9 @@ class CaptureController : public QObject
     Q_PROPERTY(int udpPackets READ udpPackets NOTIFY statisticsChanged)
     Q_PROPERTY(int tcpPackets READ tcpPackets NOTIFY statisticsChanged)
     Q_PROPERTY(int matchedPackets READ matchedPackets NOTIFY statisticsChanged)
+    Q_PROPERTY(bool configLoaded READ isConfigLoaded NOTIFY configStateChanged)
+    Q_PROPERTY(QString configFileName READ configFileName NOTIFY configStateChanged)
+    Q_PROPERTY(QString lastError READ lastError NOTIFY errorChanged)
 
 public:
     explicit CaptureController(QObject *parent = nullptr);
@@ -37,14 +40,19 @@ public:
     int udpPackets() const { return m_udpPackets; }
     int tcpPackets() const { return m_tcpPackets; }
     int matchedPackets() const { return m_matchedPackets; }
+    bool isConfigLoaded() const { return m_configLoaded; }
+    QString configFileName() const { return m_configFileName; }
+    QString lastError() const { return m_lastError; }
 
     PacketModel* getPacketModel() { return m_packetModel; }
 
 signals:
     void capturingChanged();
     void statisticsChanged();
+    void configStateChanged();
+    void errorChanged();
     void errorOccurred(const QString& errorMsg);
-    void configLoaded(const QString& protocolName);
+    void protocolConfigLoaded(const QString& protocolName);
 
 private slots:
     void onPacketCaptured(const RawPacketOfTool& packet) const;
@@ -58,10 +66,13 @@ private:
     PacketModel* m_packetModel;
 
     bool m_isCapturing;
+    bool m_configLoaded;
     int m_totalPackets;
     int m_udpPackets;
     int m_tcpPackets;
     int m_matchedPackets;
+    QString m_configFileName;
+    QString m_lastError;
 };
 
 #endif // CAPTURECONTROLLER_H

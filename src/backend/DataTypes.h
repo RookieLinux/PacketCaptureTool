@@ -56,6 +56,7 @@ struct RawPacketOfTool {
     QByteArray data;           // 完整数据包数据
     qint64 timestamp;          // 捕获时间戳（微秒）
     quint32 length;            // 数据包长度
+    quint32 headerLength;      // 头部长度（以太网+IP+传输层）
     QString sourceIP;          // 源IP地址
     QString destIP;            // 目标IP地址
     quint16 sourcePort;        // 源端口
@@ -67,6 +68,7 @@ struct RawPacketOfTool {
         return data == other.data &&
                timestamp == other.timestamp &&
                length == other.length &&
+               headerLength == other.headerLength &&
                sourceIP == other.sourceIP &&
                destIP == other.destIP &&
                sourcePort == other.sourcePort &&
@@ -149,7 +151,7 @@ struct ProtocolConfiguration {
     
     // 包长度配置
     bool isFixedLength;              // 是否固定长度
-    quint32 fixedLength;             // 固定长度值
+    quint32 fixedLength;             // 固定长度值(不包含各种网络首部)
     QString lengthFieldName;         // 长度字段名称
     quint32 lengthFieldOffset;       // 长度字段偏移量
     

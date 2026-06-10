@@ -7,12 +7,40 @@ import FluentUI
 FluWindow {
     id: mainWindow
     visible: true
-    width: 1200
-    height: 800
+    width: 1300
+    height: 850
     title: qsTr("Packet Capture Tool")
 
     Component.onCompleted: {
         FluApp.init(mainWindow)
+        FluTheme.nativeText = false
+    }
+
+    function localFilePath(fileUrl) {
+        if (fileUrl.toLocalFile) {
+            var localPath = fileUrl.toLocalFile()
+            if (localPath.length > 0) {
+                return localPath
+            }
+        }
+
+        var path = decodeURIComponent(fileUrl.toString())
+        if (path.indexOf("file:///") === 0) {
+            path = path.substring(8)
+        } else if (path.indexOf("file://") === 0) {
+            path = path.substring(7)
+        }
+
+        if (path.length > 2 && path[0] === "/" && path[2] === ":") {
+            path = path.substring(1)
+        }
+        return path
+    }
+
+    function refreshSelectedPacketDetails() {
+        if (packetListView.currentIndex >= 0 && packetListView.currentIndex < packetListView.count) {
+            packetDetailView.packetDetails = packetModel.getPacketDetails(packetListView.currentIndex)
+        }
     }
 
     // File dialogs
@@ -21,7 +49,7 @@ FluWindow {
         title: qsTr("Select Protocol Configuration File")
         nameFilters: ["JSON files (*.json)", "All files (*)"]
         onAccepted: {
-            var filePath = selectedFile.toString().replace("file://", "")
+            var filePath = mainWindow.localFilePath(selectedFile)
             captureController.loadProtocolConfig(filePath)
         }
     }
@@ -32,7 +60,7 @@ FluWindow {
         nameFilters: ["PCAP files (*.pcap)", "All files (*)"]
         fileMode: FileDialog.SaveFile
         onAccepted: {
-            var filePath = selectedFile.toString().replace("file://", "")
+            var filePath = mainWindow.localFilePath(selectedFile)
             captureController.savePackets(filePath)
         }
     }
@@ -42,8 +70,35 @@ FluWindow {
         title: qsTr("Load Packets from PCAP File")
         nameFilters: ["PCAP files (*.pcap)", "All files (*)"]
         onAccepted: {
-            var filePath = selectedFile.toString().replace("file://", "")
+            var filePath = mainWindow.localFilePath(selectedFile)
             captureController.loadPackets(filePath)
+        }
+    }
+
+    Connections {
+        target: captureController
+        function onProtocolConfigLoaded(protocolName) {
+            mainWindow.showSuccess(qsTr("Loaded config: ") + protocolName, 2000)
+            mainWindow.refreshSelectedPacketDetails()
+        }
+
+        function onErrorOccurred(errorMsg) {
+            mainWindow.showError(errorMsg, 4000)
+        }
+    }
+
+    Connections {
+        target: packetModel
+        function onDataChanged(topLeft, bottomRight, roles) {
+            mainWindow.refreshSelectedPacketDetails()
+        }
+
+        function onRowsInserted(parent, first, last) {
+            mainWindow.refreshSelectedPacketDetails()
+        }
+
+        function onModelReset() {
+            packetDetailView.packetDetails = ({})
         }
     }
 
@@ -62,9 +117,11 @@ FluWindow {
 
         FluFrame {
             Layout.fillWidth: true
-            Layout.preferredHeight: 50
+            Layout.preferredHeight: 60
+            Layout.margins: 10
+            Layout.bottomMargin: 5
             padding: 5
-            radius: 0
+            radius: 8
             border.width: 0
             border.color: "transparent"
             color: FluTheme.dark ? Qt.rgba(45/255, 45/255, 45/255, 1) : Qt.rgba(249/255, 249/255, 249/255, 1)
@@ -80,7 +137,7 @@ FluWindow {
 
                 FluComboBox {
                     id: interfaceSelector
-                    Layout.preferredWidth: 300
+                    Layout.preferredWidth: 400
                     model: captureController.getInterfaces()
                     textRole: "displayName"
                 }
@@ -155,15 +212,17 @@ FluWindow {
         FluSplitLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            Layout.margins: 10
+            Layout.topMargin: 0
             orientation: Qt.Horizontal
 
             // Left side: Packet list
             FluFrame {
-                SplitView.preferredWidth: 300
-                SplitView.minimumWidth: 250
+                SplitView.preferredWidth: 400
+                SplitView.minimumWidth: 300
                 Layout.fillHeight: true
                 padding: 0
-                radius: 0
+                radius: 8
                 
                 ListView {
                     id: packetListView
@@ -175,9 +234,7 @@ FluWindow {
                     focus: true
                     keyNavigationEnabled: true
                     onCurrentIndexChanged: {
-                        if (currentIndex >= 0 && currentIndex < count) {
-                            packetDetailView.packetDetails = packetModel.getPacketDetails(currentIndex)
-                        }
+                        mainWindow.refreshSelectedPacketDetails()
                     }
 
                     delegate: Item {
@@ -298,10 +355,10 @@ FluWindow {
             // Right side: Packet details
             FluFrame {
                 id: packetDetailFrame
-                width:anchors.fillWidth - packetListView.width
+                Layout.fillWidth: true
                 Layout.fillHeight: true
                 padding: 10
-                radius: 0
+                radius: 8
                 clip: true
 
                 ColumnLayout {
@@ -309,6 +366,114 @@ FluWindow {
                     anchors.fill: parent
                     spacing: 10
                     property var packetDetails: ({})
+                    property string frameNormalColor: FluTheme.dark ? "#EDEBE9" : "#201F1E"
+                    property string frameEthernetColor: FluTheme.dark ? "#FFD166" : "#8A5A00"
+                    property string frameIpColor: FluTheme.dark ? "#7DD3FC" : "#0067B8"
+                    property string frameTransportColor: FluTheme.dark ? "#F0ABFC" : "#B146C2"
+
+                    function hexByte(rawDataHex, byteIndex) {
+                        if (byteIndex * 2 + 2 > rawDataHex.length) return "00"
+                        return rawDataHex.substring(byteIndex * 2, byteIndex * 2 + 2).toUpperCase()
+                    }
+
+                    function parseFrameLayers(rawDataHex) {
+                        var byteCount = Math.floor(rawDataHex.length / 2)
+                        var layers = []
+                        if (byteCount < 14) return layers
+
+                        var etherTypeOffset = 12
+                        var ipStart = 14
+                        var etherType = hexByte(rawDataHex, etherTypeOffset) + hexByte(rawDataHex, etherTypeOffset + 1)
+
+                        while ((etherType === "8100" || etherType === "88A8" || etherType === "9100") && byteCount >= ipStart + 4) {
+                            etherTypeOffset += 4
+                            ipStart += 4
+                            etherType = hexByte(rawDataHex, etherTypeOffset) + hexByte(rawDataHex, etherTypeOffset + 1)
+                        }
+
+                        layers.push({ start: 0, end: ipStart, color: frameEthernetColor })
+
+                        if (etherType !== "0800" || byteCount <= ipStart) return layers
+
+                        var versionAndIhl = parseInt(hexByte(rawDataHex, ipStart), 16)
+                        var ipVersion = versionAndIhl >> 4
+                        var ipHeaderLength = (versionAndIhl & 0x0F) * 4
+                        if (ipVersion !== 4 || ipHeaderLength < 20 || byteCount < ipStart + ipHeaderLength) return layers
+
+                        var transportStart = ipStart + ipHeaderLength
+                        layers.push({ start: ipStart, end: transportStart, color: frameIpColor })
+
+                        if (byteCount <= transportStart) return layers
+
+                        var protocol = parseInt(hexByte(rawDataHex, ipStart + 9), 16)
+                        var transportLength = 0
+                        if (protocol === 6 && byteCount > transportStart + 12) {
+                            transportLength = (parseInt(hexByte(rawDataHex, transportStart + 12), 16) >> 4) * 4
+                        } else if (protocol === 17) {
+                            transportLength = 8
+                        }
+
+                        if (transportLength > 0) {
+                            layers.push({
+                                start: transportStart,
+                                end: Math.min(byteCount, transportStart + transportLength),
+                                color: frameTransportColor
+                            })
+                        }
+                        return layers
+                    }
+
+                    function frameByteColor(byteIndex, layers) {
+                        for (var i = 0; i < layers.length; i++) {
+                            if (byteIndex >= layers[i].start && byteIndex < layers[i].end) return layers[i].color
+                        }
+                        return ""
+                    }
+
+                    function formatFrameData(rawDataHex) {
+                        if (!rawDataHex) return ""
+                        var layers = parseFrameLayers(rawDataHex)
+                        var html = "<pre style=\"font-family: 'Consolas', 'Cascadia Mono', 'Courier New', monospace; font-size: 12px; line-height: 1.45; color: " +
+                                   frameNormalColor + "; margin: 0;\">"
+
+                        var currentColor = ""
+                        var openedSpan = false
+
+                        for (var i = 0; i < rawDataHex.length; i += 2) {
+                            var byteIndex = i / 2
+                            var color = frameByteColor(byteIndex, layers)
+                            var s = rawDataHex.substring(i, i + 2).toUpperCase()
+
+                            if (color !== currentColor) {
+                                if (openedSpan) {
+                                    html += "</span>"
+                                    openedSpan = false
+                                }
+                                if (color !== "") {
+                                    html += "<span style=\"color: " + color + ";\">"
+                                    openedSpan = true
+                                }
+                                currentColor = color
+                            }
+
+                            html += s
+
+                            if ((byteIndex + 1) % 16 === 0) {
+                                if (openedSpan) {
+                                    html += "</span>"
+                                    openedSpan = false
+                                    currentColor = ""
+                                }
+                                html += "\n"
+                            } else if (i + 2 < rawDataHex.length) {
+                                html += ((byteIndex + 1) % 8 === 0) ? "  " : " "
+                            }
+                        }
+
+                        if (openedSpan) html += "</span>"
+                        html += "</pre>"
+                        return html
+                    }
 
                     FluText {
                         text: packetDetailView.packetDetails && packetDetailView.packetDetails.index !== undefined ?
@@ -336,7 +501,7 @@ FluWindow {
                                         anchors.fill: parent
                                         
                                         ColumnLayout {
-                                            width: parent.width
+                                            Layout.fillWidth: true
                                             spacing: 10
 
                                             // Error message
@@ -346,6 +511,7 @@ FluWindow {
                                                 color: FluTheme.dark ? Qt.rgba(68/255, 39/255, 38/255, 1) : Qt.rgba(253/255, 231/255, 233/255, 1)
                                                 border.color: FluTheme.dark ? Qt.rgba(67/255, 39/255, 38/255, 1) : Qt.rgba(238/255, 217/255, 219/255, 1)
                                                 visible: packetDetailView.packetDetails && packetDetailView.packetDetails.isValid !== undefined && packetDetailView.packetDetails.isValid === false
+                                                implicitWidth: 0
                                                 
                                                 RowLayout {
                                                     anchors.fill: parent
@@ -374,6 +540,8 @@ FluWindow {
                                                 FluFrame {
                                                     Layout.fillWidth: true
                                                     padding: 10
+                                                    radius: 4
+                                                    implicitWidth: 0
                                                     
                                                     RowLayout {
                                                         anchors.fill: parent
@@ -381,14 +549,16 @@ FluWindow {
                                                         FluText {
                                                             text: modelData.name || ""
                                                             font: FluTextStyle.BodyStrong
-                                                            Layout.preferredWidth: parent.width * 0.3
+                                                            Layout.fillWidth: true
+                                                            Layout.preferredWidth: 150
                                                         }
                                                         
                                                         FluText {
                                                             text: modelData.type || ""
                                                             font: FluTextStyle.Caption
                                                             color: "#888888"
-                                                            Layout.preferredWidth: parent.width * 0.2
+                                                            Layout.fillWidth: true
+                                                            Layout.preferredWidth: 100
                                                         }
                                                         
                                                         FluCopyableText {
@@ -396,6 +566,7 @@ FluWindow {
                                                             font: FluTextStyle.Body
                                                             color: FluTheme.primaryColor
                                                             Layout.fillWidth: true
+                                                            Layout.preferredWidth: 250
                                                         }
                                                     }
                                                 }
@@ -405,11 +576,23 @@ FluWindow {
                                                 Layout.fillWidth: true
                                                 Layout.preferredHeight: 100
                                                 visible: !packetDetailView.packetDetails || 
-                                                         !packetDetailView.packetDetails.parsedFields || 
-                                                         packetDetailView.packetDetails.parsedFields.length === 0
-                                                text: packetDetailView.packetDetails && packetDetailView.packetDetails.index !== undefined ?
-                                                    qsTr("No parsed fields available for this packet") :
-                                                    qsTr("Select a packet to view parsed fields")
+                                                         (packetDetailView.packetDetails.index === undefined)
+                                                text: qsTr("Select a packet to view parsed fields")
+                                                font: FluTextStyle.Body
+                                                color: "#999999"
+                                                horizontalAlignment: Text.AlignHCenter
+                                                verticalAlignment: Text.AlignVCenter
+                                            }
+
+                                            FluText {
+                                                Layout.fillWidth: true
+                                                Layout.preferredHeight: 100
+                                                visible: packetDetailView.packetDetails && 
+                                                         packetDetailView.packetDetails.index !== undefined &&
+                                                         packetDetailView.packetDetails.isValid === true &&
+                                                         (!packetDetailView.packetDetails.parsedFields || 
+                                                          packetDetailView.packetDetails.parsedFields.length === 0)
+                                                text: qsTr("Protocol matched, but no fields defined in configuration")
                                                 font: FluTextStyle.Body
                                                 color: "#999999"
                                                 horizontalAlignment: Text.AlignHCenter
@@ -427,33 +610,81 @@ FluWindow {
                                 Item {
                                     width: detailPivot.width
                                     height: detailPivot.height - detailPivot.headerHeight
-                                    
-                                    FluMultilineTextBox {
+
+                                    Rectangle {
                                         anchors.fill: parent
-                                        readOnly: true
-                                        font.family: "Monospace"
-                                        font.pixelSize: 12
-                                        text: {
-                                            if (!packetDetailView.packetDetails || packetDetailView.packetDetails.index === undefined) {
-                                                return qsTr("Select a packet to view raw data")
+                                        radius: 4
+                                        color: FluTheme.dark ? Qt.rgba(30/255, 30/255, 30/255, 1) : Qt.rgba(1, 1, 1, 1)
+                                        border.color: FluTheme.dark ? Qt.rgba(64/255, 64/255, 64/255, 1) : Qt.rgba(216/255, 216/255, 216/255, 1)
+                                        clip: true
+
+                                        Flickable {
+                                            id: frameDataFlickable
+                                            anchors.fill: parent
+                                            anchors.margins: 8
+                                            contentWidth: Math.max(width, frameDataText.contentWidth)
+                                            contentHeight: Math.max(height, frameDataText.contentHeight)
+                                            boundsBehavior: Flickable.StopAtBounds
+                                            clip: true
+
+                                            TextEdit {
+                                                id: frameDataText
+                                                width: Math.max(frameDataFlickable.width, contentWidth)
+                                                height: Math.max(frameDataFlickable.height, contentHeight)
+                                                readOnly: true
+                                                selectByMouse: true
+                                                activeFocusOnPress: true
+                                                textFormat: TextEdit.RichText
+                                                wrapMode: TextEdit.NoWrap
+                                                color: packetDetailView.frameNormalColor
+                                                selectedTextColor: color
+                                                selectionColor: FluTools.withOpacity(FluTheme.primaryColor, 0.5)
+                                                renderType: Text.QtRendering
+                                                font.family: "Consolas"
+                                                font.pixelSize: 12
+                                                text: {
+                                                    if (!packetDetailView.packetDetails || packetDetailView.packetDetails.index === undefined) {
+                                                        return qsTr("Select a packet to view raw data")
+                                                    }
+
+                                                    var rawDataHex = packetDetailView.packetDetails.rawData
+                                                    if (!rawDataHex) {
+                                                        return qsTr("No raw data available")
+                                                    }
+
+                                                    return packetDetailView.formatFrameData(rawDataHex)
+                                                }
                                             }
-                                            
-                                            var rawData = packetDetailView.packetDetails.rawData
-                                            if (!rawData) {
-                                                return qsTr("No raw data available")
+
+                                            ScrollBar.vertical: FluScrollBar {}
+                                            ScrollBar.horizontal: FluScrollBar {}
+                                        }
+
+                                        MouseArea {
+                                            anchors.fill: parent
+                                            cursorShape: Qt.IBeamCursor
+                                            acceptedButtons: Qt.RightButton
+                                            onClicked: {
+                                                if (frameDataText.text !== "") {
+                                                    frameDataMenuLoader.popup()
+                                                }
                                             }
-                                            
-                                            // Convert to hex display (simplified for preview)
-                                            var hexString = ""
-                                            for (var i = 0; i < rawData.length; i++) {
-                                                var b = rawData.charCodeAt(i) & 0xFF
-                                                var s = b.toString(16).toUpperCase()
-                                                if (s.length < 2) s = "0" + s
-                                                hexString += s + " "
-                                                if ((i + 1) % 16 === 0) hexString += "\n"
-                                                else if ((i + 1) % 8 === 0) hexString += "  "
+                                        }
+
+                                        FluLoader {
+                                            id: frameDataMenuLoader
+                                            function popup() {
+                                                sourceComponent = frameDataMenu
                                             }
-                                            return hexString
+                                        }
+
+                                        Component {
+                                            id: frameDataMenu
+                                            FluTextBoxMenu {
+                                                inputItem: frameDataText
+                                                Component.onCompleted: popup()
+                                                onClosed: frameDataMenuLoader.sourceComponent = undefined
+                                            }
                                         }
                                     }
                                 }
@@ -468,8 +699,10 @@ FluWindow {
         FluFrame {
             Layout.fillWidth: true
             Layout.preferredHeight: 30
+            Layout.margins: 10
+            Layout.topMargin: 5
             padding: 5
-            radius: 0
+            radius: 8
             border.width: 0
             color: FluTheme.dark ? Qt.rgba(30/255, 30/255, 30/255, 1) : Qt.rgba(238/255, 238/255, 238/255, 1)
 
@@ -501,7 +734,7 @@ FluWindow {
                 }
 
                 FluText {
-                    text: "Invalid: " + (captureController.totalPackets - captureController.validPackets)
+                    text: "Invalid: " + (captureController.totalPackets - captureController.matchedPackets)
                     font: FluTextStyle.Caption
                     color: "#CC0000"
                 }

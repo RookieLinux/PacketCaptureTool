@@ -1,8 +1,10 @@
 #include "CaptureController.h"
+#include <QFileInfo>
 
 CaptureController::CaptureController(QObject *parent)
     : QObject(parent),
       m_isCapturing(false),
+      m_configLoaded(false),
       m_totalPackets(0),
       m_udpPackets(0),
       m_tcpPackets(0),
@@ -50,19 +52,28 @@ bool CaptureController::loadProtocolConfig(const QString& filePath)
     ProtocolConfiguration config = m_configLoader->loadFromFile(filePath, errorMsg);
     
     if (!errorMsg.isEmpty()) {
+        m_lastError = errorMsg;
+        emit errorChanged();
         emit errorOccurred(errorMsg);
         return false;
     }
     
     m_parser->setProtocolConfig(config);
     m_filterEngine->setProtocolConfig(config);
-    emit configLoaded(config.protocolName);
+    m_configLoaded = true;
+    m_configFileName = QFileInfo(filePath).fileName();
+    m_lastError.clear();
+    emit configStateChanged();
+    emit errorChanged();
+    m_packetModel->reparsePackets(m_parser);
+    emit protocolConfigLoaded(config.protocolName);
     
     return true;
 }
 
 bool CaptureController::startCapture(const QString& interfaceName)
 {
+    clearPackets();
     QString errorMsg;
     if (m_captureEngine->startCapture(interfaceName, errorMsg)) {
         m_isCapturing = true;
@@ -70,6 +81,8 @@ bool CaptureController::startCapture(const QString& interfaceName)
         return true;
     }
     
+    m_lastError = errorMsg;
+    emit errorChanged();
     emit errorOccurred(errorMsg);
     return false;
 }
@@ -93,6 +106,8 @@ bool CaptureController::savePackets(const QString& filePath)
         return true;
     }
     
+    m_lastError = errorMsg;
+    emit errorChanged();
     emit errorOccurred(errorMsg);
     return false;
 }
@@ -106,6 +121,8 @@ bool CaptureController::loadPackets(const QString& filePath)
         return true;
     }
     
+    m_lastError = errorMsg;
+    emit errorChanged();
     emit errorOccurred(errorMsg);
     return false;
 }

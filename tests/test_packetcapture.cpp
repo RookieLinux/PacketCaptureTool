@@ -1,6 +1,7 @@
 #include <QtTest/QtTest>
 #include "PacketCaptureEngine.h"
 #include "CaptureController.h"
+#include "PacketModel.h"
 #include "ProtocolParser.h"
 #include <QSignalSpy>
 
@@ -91,12 +92,82 @@ private slots:
         packet.destPort = 1234;
         // 模拟4字节数据 0x00000001 (BigEndian)
         packet.data = QByteArray::fromHex("00000001");
+        packet.length = packet.data.length();
+        packet.headerLength = 0;
         
         ParsedPacket parsed = parser.parsePacket(packet);
         QVERIFY(parsed.isValid);
         QCOMPARE(parsed.fields.size(), 1);
         QCOMPARE(parsed.fields[0].name, QString("TestField"));
         QCOMPARE(parsed.fields[0].value.toUInt(), 1u);
+    }
+
+    void testPacketModelUsesDisplayedRawDataLength()
+    {
+        PacketModel model;
+
+        RawPacketOfTool packet;
+        packet.data = QByteArray::fromHex("00ff8041");
+        packet.length = 99;
+        packet.timestamp = 123456;
+        packet.sourceIP = "192.0.2.1";
+        packet.destIP = "192.0.2.2";
+        packet.sourcePort = 1000;
+        packet.destPort = 2000;
+        packet.protocol = TransportProtocol::UDP;
+
+        ParsedPacket parsed;
+        parsed.isValid = false;
+        parsed.errorMessage = "No protocol configuration loaded";
+        parsed.rawData = packet.data;
+
+        model.addPacket(packet, parsed);
+
+        const QModelIndex packetIndex = model.index(0, 0);
+        QCOMPARE(model.data(packetIndex, PacketModel::LengthRole).toInt(), packet.data.length());
+        QCOMPARE(model.data(packetIndex, PacketModel::RawDataRole).toString(), QString("00ff8041"));
+
+        const QVariantMap details = model.getPacketDetails(0);
+        QCOMPARE(details["length"].toInt(), packet.data.length());
+        QCOMPARE(details["rawData"].toString(), QString("00ff8041"));
+    }
+
+    void testPacketModelReparsesExistingPacketsAfterConfigLoad()
+    {
+        PacketModel model;
+        ProtocolParser parser;
+
+        RawPacketOfTool packet;
+        packet.data = QByteArray::fromHex("01020304");
+        packet.length = packet.data.length();
+        packet.headerLength = 0;
+        packet.timestamp = 123456;
+        packet.sourceIP = "192.0.2.1";
+        packet.destIP = "192.0.2.2";
+        packet.sourcePort = 53913;
+        packet.destPort = 443;
+        packet.protocol = TransportProtocol::UDP;
+
+        ParsedPacket parsedWithoutConfig = parser.parsePacket(packet);
+        model.addPacket(packet, parsedWithoutConfig);
+
+        QVariantMap details = model.getPacketDetails(0);
+        QVERIFY(!details["isValid"].toBool());
+        QCOMPARE(details["errorMessage"].toString(), QString("No protocol configuration loaded"));
+
+        ProtocolConfiguration config;
+        config.protocolName = "TestProtocol";
+        config.transportType = TransportProtocol::UDP;
+        config.port = 53913;
+        config.isFixedLength = true;
+        config.fixedLength = 4;
+        parser.setProtocolConfig(config);
+
+        model.reparsePackets(&parser);
+
+        details = model.getPacketDetails(0);
+        QVERIFY(details["isValid"].toBool());
+        QCOMPARE(details["errorMessage"].toString(), QString(""));
     }
 
     void cleanupTestCase()

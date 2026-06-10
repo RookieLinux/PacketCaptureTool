@@ -51,6 +51,19 @@ target_link_libraries(ConfigurationLoaderTests PRIVATE
 )
 deploy_dependencies(ConfigurationLoaderTests)
 
+# Test3
+add_executable(ProtocolValidationTests
+    test_protocol_validation.cpp
+    ${PROJECT_SOURCE_DIR}/src/backend/ProtocolParser.cpp
+)
+
+target_link_libraries(ProtocolValidationTests PRIVATE
+    Qt6::Test
+    Qt6::Core
+)
+deploy_dependencies(ProtocolValidationTests)
+
 # Add tests
 add_test(NAME PacketCaptureTests COMMAND PacketCaptureTests)
 add_test(NAME ConfigurationLoaderTests COMMAND ConfigurationLoaderTests)
+add_test(NAME ProtocolValidationTests COMMAND ProtocolValidationTests)

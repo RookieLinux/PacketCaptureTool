@@ -6,6 +6,8 @@
 #include <QVariantMap>
 #include "DataTypes.h"
 
+class ProtocolParser;
+
 class PacketModel : public QAbstractListModel
 {
     Q_OBJECT
@@ -33,6 +35,7 @@ public:
     QHash<int, QByteArray> roleNames() const override;
 
     void addPacket(const RawPacketOfTool& raw, const ParsedPacket& parsed);
+    void reparsePackets(ProtocolParser* parser);
     void clear();
 
     Q_INVOKABLE QVariantMap getPacketDetails(int index) const;
