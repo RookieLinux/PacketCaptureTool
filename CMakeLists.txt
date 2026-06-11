@@ -112,9 +112,25 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 # Function to deploy dependencies to a target
 function(deploy_dependencies target_name)
     if (WIN32)
+        set(3RDPARTY_DLL_DIR)
+
         # 拷贝第三方库到可执行文件同目录
         if (MINGW)
             file(GLOB_RECURSE 3RDPARTY_DLL_DIR ${PROJECT_SOURCE_DIR}/3rdparty/mingw/*.dll)
+
+            set(MINGW_RUNTIME_DLL_NAMES
+                libgcc_s_dw2-1.dll
+                libgcc_s_seh-1.dll
+                libstdc++-6.dll
+                libwinpthread-1.dll
+            )
+
+            foreach (dll_file IN LISTS 3RDPARTY_DLL_DIR)
+                get_filename_component(dll_name "${dll_file}" NAME)
+                if (dll_name IN_LIST MINGW_RUNTIME_DLL_NAMES)
+                    list(REMOVE_ITEM 3RDPARTY_DLL_DIR "${dll_file}")
+                endif ()
+            endforeach ()
         elseif (MSVC)
             if (CMAKE_SIZEOF_VOID_P EQUAL 4)
                 file(GLOB_RECURSE 3RDPARTY_DLL_DIR ${PROJECT_SOURCE_DIR}/3rdparty/msvc/x86/*.dll)
@@ -128,7 +144,7 @@ function(deploy_dependencies target_name)
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 ${3RDPARTY_DLL_DIR}
                 $<TARGET_FILE_DIR:${target_name}>
-                COMMENT "Copying third-party runtime DLLs for ${target_name}"
+                COMMENT "Copying third-party DLLs for ${target_name}"
             )
         endif ()
 
@@ -176,6 +192,7 @@ function(deploy_dependencies target_name)
             add_custom_command(TARGET ${target_name} POST_BUILD
                 COMMAND "${WINDEPLOYQT_EXECUTABLE}"
                 --no-translations
+                --compiler-runtime
                 --qmldir "${PROJECT_SOURCE_DIR}/src/ui"
                 "$<TARGET_FILE:${target_name}>"
                 COMMENT "Running windeployqt for ${target_name}"
@@ -204,13 +221,19 @@ if (WIN32)
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
         "${PROJECT_BINARY_DIR}/_deps/FluentUI-build/src/qml/FluentUI/fluentuiplugin.dll"
         "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
-        # Ensure dependencies of fluentuiplugin are also deployed to the executable directory
-        COMMAND "${WINDEPLOYQT_EXECUTABLE}"
-        --no-translations
-        --dir "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
-        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/qml/FluentUI/fluentuiplugin.dll"
-        COMMENT "Deploying FluentUI QML module and its dependencies"
+        COMMENT "Deploying FluentUI QML module"
     )
+
+    if (WINDEPLOYQT_EXECUTABLE)
+        add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+            COMMAND "${WINDEPLOYQT_EXECUTABLE}"
+            --no-translations
+            --compiler-runtime
+            --dir "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
+            "$<TARGET_FILE_DIR:${PROJECT_NAME}>/qml/FluentUI/fluentuiplugin.dll"
+            COMMENT "Deploying FluentUI plugin dependencies"
+        )
+    endif ()
 endif ()
 
 # Enable testing
