@@ -118,8 +118,8 @@
 git clone https://github.com/RookieLinux/PacketCaptureTool
 cd PacketCaptureTool
 
-# 使用 CMake 配置并构建
-cmake -B build -DCMAKE_BUILD_TYPE=Release
+# 使用 CMake 配置并构建，注意更改路径为实际编译使用的Qt路径
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=D:\Qt\Qt6.6.2\6.6.2\mingw_64
 cmake --build build --config Release
 
 # 运行程序
