@@ -1,7 +1,22 @@
 #include "ConfigurationLoader.h"
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonArray>
+#include <QUrl>
+
+namespace {
+QString normalizeConfigPath(const QString& filePath)
+{
+    if (filePath.startsWith("file://")) {
+        const QUrl url(filePath);
+        if (url.isLocalFile()) {
+            return url.toLocalFile();
+        }
+    }
+    return filePath;
+}
+}
 
 ConfigurationLoader::ConfigurationLoader(QObject *parent)
     : QObject(parent)
@@ -11,10 +26,18 @@ ConfigurationLoader::ConfigurationLoader(QObject *parent)
 ProtocolConfiguration ConfigurationLoader::loadFromFile(const QString& filePath, QString& errorMsg)
 {
     ProtocolConfiguration config;
+    const QString normalizedPath = normalizeConfigPath(filePath);
+    const QFileInfo fileInfo(normalizedPath);
+
+    if (!fileInfo.exists()) {
+        errorMsg = QString("配置文件不存在：%1").arg(normalizedPath);
+        return config;
+    }
     
-    QFile file(filePath);
+    QFile file(normalizedPath);
     if (!file.open(QIODevice::ReadOnly)) {
-        errorMsg = QString("配置文件不存在：%1").arg(filePath);
+        errorMsg = QString("无法打开配置文件：%1（%2）")
+                       .arg(normalizedPath, file.errorString());
         return config;
     }
     

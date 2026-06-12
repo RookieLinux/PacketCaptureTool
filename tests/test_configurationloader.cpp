@@ -1,8 +1,10 @@
 #include <QtTest/QtTest>
 #include <QTemporaryFile>
+#include <QTemporaryDir>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <QUrl>
 #include "ConfigurationLoader.h"
 #include "DataTypes.h"
 
@@ -82,6 +84,48 @@ private slots:
         
         QVERIFY(!errorMsg.isEmpty());
         QVERIFY(errorMsg.contains("配置文件不存在"));
+    }
+
+    void testLoadFileUrlPath()
+    {
+        QTemporaryFile tempFile;
+        QVERIFY(tempFile.open());
+
+        QString jsonContent = R"({
+            "protocolName": "UrlProtocol",
+            "transportType": "UDP",
+            "port": 9000,
+            "length": {
+                "type": "fixed",
+                "fixedValue": 8
+            },
+            "fields": []
+        })";
+
+        tempFile.write(jsonContent.toUtf8());
+        tempFile.flush();
+
+        ConfigurationLoader loader;
+        QString errorMsg;
+        const QString fileUrl = QUrl::fromLocalFile(tempFile.fileName()).toString();
+        ProtocolConfiguration config = loader.loadFromFile(fileUrl, errorMsg);
+
+        QVERIFY2(errorMsg.isEmpty(), errorMsg.toUtf8().constData());
+        QCOMPARE(config.protocolName, QString("UrlProtocol"));
+    }
+
+    void testLoadDirectoryPathShouldReportOpenError()
+    {
+        QTemporaryDir tempDir;
+        QVERIFY(tempDir.isValid());
+
+        ConfigurationLoader loader;
+        QString errorMsg;
+        ProtocolConfiguration config = loader.loadFromFile(tempDir.path(), errorMsg);
+
+        QVERIFY(config.protocolName.isEmpty());
+        QVERIFY(!errorMsg.isEmpty());
+        QVERIFY(errorMsg.contains("无法打开配置文件"));
     }
     
     void testLoadInvalidJson()

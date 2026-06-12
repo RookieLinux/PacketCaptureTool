@@ -17,23 +17,29 @@ FluWindow {
     }
 
     function localFilePath(fileUrl) {
+        if (fileUrl === undefined || fileUrl === null) {
+            return ""
+        }
+
         if (fileUrl.toLocalFile) {
             var localPath = fileUrl.toLocalFile()
-            if (localPath.length > 0) {
+            if (localPath && localPath.length > 0) {
                 return localPath
             }
         }
 
-        var path = decodeURIComponent(fileUrl.toString())
-        if (path.indexOf("file:///") === 0) {
-            path = path.substring(8)
-        } else if (path.indexOf("file://") === 0) {
+        var urlString = (typeof fileUrl === "string") ? fileUrl : fileUrl.toString()
+        var path = decodeURIComponent(urlString)
+
+        if (path.indexOf("file://") === 0) {
             path = path.substring(7)
         }
 
-        if (path.length > 2 && path[0] === "/" && path[2] === ":") {
+        // Windows 路径可能被表示为 /C:/...，去掉多余前导 /
+        if (/^\/[A-Za-z]:[\\/]/.test(path)) {
             path = path.substring(1)
         }
+
         return path
     }
 
