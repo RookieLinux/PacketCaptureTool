@@ -125,12 +125,14 @@ function(deploy_dependencies target_name)
                 libwinpthread-1.dll
             )
 
+            set(filtered_dlls)
             foreach (dll_file IN LISTS 3RDPARTY_DLL_DIR)
                 get_filename_component(dll_name "${dll_file}" NAME)
-                if (dll_name IN_LIST MINGW_RUNTIME_DLL_NAMES)
-                    list(REMOVE_ITEM 3RDPARTY_DLL_DIR "${dll_file}")
+                if (NOT dll_name IN_LIST MINGW_RUNTIME_DLL_NAMES)
+                    list(APPEND filtered_dlls "${dll_file}")
                 endif ()
             endforeach ()
+            set(3RDPARTY_DLL_DIR "${filtered_dlls}")
         elseif (MSVC)
             if (CMAKE_SIZEOF_VOID_P EQUAL 4)
                 file(GLOB_RECURSE 3RDPARTY_DLL_DIR ${PROJECT_SOURCE_DIR}/3rdparty/msvc/x86/*.dll)
@@ -145,46 +147,6 @@ function(deploy_dependencies target_name)
                 ${3RDPARTY_DLL_DIR}
                 $<TARGET_FILE_DIR:${target_name}>
                 COMMENT "Copying third-party DLLs for ${target_name}"
-            )
-        endif ()
-
-        find_file(NPCAP_PACKET_DLL
-                NAMES Packet.dll
-                HINTS
-                ${PCAP_ROOT}
-                ${PCAP_ROOT}/Redist
-                ${PCAP_ROOT}/Bin
-                $ENV{SystemRoot}/System32
-                $ENV{WINDIR}/System32/Npcap
-                PATH_SUFFIXES x64 Win32
-        )
-
-        find_file(NPCAP_WPCAP_DLL
-                NAMES wpcap.dll
-                HINTS
-                ${PCAP_ROOT}
-                ${PCAP_ROOT}/Redist
-                ${PCAP_ROOT}/Bin
-                $ENV{SystemRoot}/System32
-                $ENV{WINDIR}/System32/Npcap
-                PATH_SUFFIXES x64 Win32
-        )
-
-        if (NPCAP_PACKET_DLL)
-            add_custom_command(TARGET ${target_name} POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${NPCAP_PACKET_DLL}"
-                $<TARGET_FILE_DIR:${target_name}>
-                COMMENT "Copying Packet.dll for ${target_name}"
-            )
-        endif ()
-
-        if (NPCAP_WPCAP_DLL)
-            add_custom_command(TARGET ${target_name} POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${NPCAP_WPCAP_DLL}"
-                $<TARGET_FILE_DIR:${target_name}>
-                COMMENT "Copying wpcap.dll for ${target_name}"
             )
         endif ()
 
