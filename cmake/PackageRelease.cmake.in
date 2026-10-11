@@ -1,0 +1,112 @@
+cmake_minimum_required(VERSION 3.16)
+
+if(NOT RELEASE_CONFIG STREQUAL "Release")
+    message(FATAL_ERROR "package_release requires Release. Configure with -DCMAKE_BUILD_TYPE=Release (single-config), or build with --config Release (multi-config).")
+endif()
+set(deploy_tool "@RELEASE_DEPLOY_TOOL@")
+if(NOT EXISTS "${deploy_tool}")
+    message(FATAL_ERROR "Deployment tool missing. Configure WINDEPLOYQT_EXECUTABLE (Windows) or LINUXDEPLOYQT_EXECUTABLE (Ubuntu), then rerun CMake.")
+endif()
+foreach(input IN ITEMS "${RELEASE_APP}" "${RELEASE_PLUGIN}" "@RELEASE_FLUENT_QML_DIR@/qmldir")
+    if(NOT EXISTS "${input}")
+        message(FATAL_ERROR "Release input missing: ${input}")
+    endif()
+endforeach()
+
+function(run_checked)
+    execute_process(COMMAND ${ARGV} RESULT_VARIABLE result)
+    if(NOT result STREQUAL "0")
+        message(FATAL_ERROR "Release command failed (${result}): ${ARGV}")
+    endif()
+endfunction()
+
+set(package_name "PacketCaptureTool-@RELEASE_VERSION@-@RELEASE_SYSTEM@-@RELEASE_ARCH@")
+set(output_dir "@RELEASE_BINARY_DIR@/release")
+# Only this dedicated, fixed staging directory is recreated on each run.
+set(stage "${output_dir}/${package_name}")
+file(REMOVE_RECURSE "${stage}")
+file(MAKE_DIRECTORY "${stage}")
+
+if("@RELEASE_SYSTEM@" STREQUAL "Windows")
+    set(bin_dir "${stage}")
+    set(archive "${package_name}.zip")
+    set(archive_flags cf)
+    set(archive_format --format=zip)
+else()
+    set(bin_dir "${stage}/usr/bin")
+    file(MAKE_DIRECTORY "${bin_dir}" "${stage}/usr/lib"
+        "${stage}/usr/share/applications" "${stage}/usr/share/icons/hicolor/256x256/apps")
+    set(archive "${package_name}.tar.gz")
+    set(archive_flags czf)
+    set(archive_format --format=gnutar)
+endif()
+
+file(COPY "${RELEASE_APP}" DESTINATION "${bin_dir}")
+file(COPY "@RELEASE_FLUENT_QML_DIR@/" DESTINATION "${bin_dir}/qml/FluentUI"
+    PATTERN "*.dll" EXCLUDE PATTERN "*.so*" EXCLUDE PATTERN "*.a" EXCLUDE PATTERN "*.lib" EXCLUDE)
+file(COPY "${RELEASE_PLUGIN}" DESTINATION "${bin_dir}/qml/FluentUI")
+get_filename_component(app_name "${RELEASE_APP}" NAME)
+get_filename_component(plugin_name "${RELEASE_PLUGIN}" NAME)
+get_filename_component(plugin_dir "${RELEASE_PLUGIN}" DIRECTORY)
+get_filename_component(qml_import_dir "@RELEASE_FLUENT_QML_DIR@" DIRECTORY)
+
+if("@RELEASE_SYSTEM@" STREQUAL "Windows")
+    # FluentUI is also linked by the executable, so its DLL must be beside the EXE.
+    file(COPY "${RELEASE_PLUGIN}" DESTINATION "${bin_dir}")
+    if("@RELEASE_MINGW@")
+        file(GLOB_RECURSE extra_dlls "@RELEASE_SOURCE_DIR@/3rdparty/mingw/*.dll")
+        list(FILTER extra_dlls EXCLUDE REGEX "/(libgcc_s_(dw2|seh)-1|libstdc\\+\\+-6|libwinpthread-1)\\.dll$")
+    elseif("@RELEASE_MSVC@")
+        if("@RELEASE_POINTER_SIZE@" STREQUAL "8")
+            set(dll_arch x64)
+        else()
+            set(dll_arch x86)
+        endif()
+        file(GLOB_RECURSE extra_dlls "@RELEASE_SOURCE_DIR@/3rdparty/msvc/${dll_arch}/*.dll")
+    endif()
+    if(extra_dlls)
+        file(COPY ${extra_dlls} DESTINATION "${bin_dir}")
+    endif()
+    run_checked("${deploy_tool}" --release --no-translations --compiler-runtime
+        --qmldir "@RELEASE_SOURCE_DIR@/src/ui" --qmlimport "${qml_import_dir}"
+        --dir "${bin_dir}" "${bin_dir}/${app_name}" "${bin_dir}/qml/FluentUI/${plugin_name}")
+else()
+    file(COPY "${RELEASE_PLUGIN}" DESTINATION "${stage}/usr/lib")
+    file(COPY "@RELEASE_SOURCE_DIR@/src/resources/icons/packet-capture.png"
+        DESTINATION "${stage}/usr/share/icons/hicolor/256x256/apps")
+    file(WRITE "${stage}/usr/share/applications/PacketCaptureTool.desktop"
+        "[Desktop Entry]\nType=Application\nName=Packet Capture Tool\nExec=PacketCaptureTool\nIcon=packet-capture\nCategories=Network;Utility;\nTerminal=false\n")
+    # ldd must resolve the build's FluentUI and Qt libraries before deployment.
+    execute_process(COMMAND "@RELEASE_QMAKE@" -query QT_INSTALL_LIBS
+        OUTPUT_VARIABLE qt_lib_dir OUTPUT_STRIP_TRAILING_WHITESPACE RESULT_VARIABLE result)
+    if(NOT result STREQUAL "0")
+        message(FATAL_ERROR "Cannot query Qt libraries using @RELEASE_QMAKE@")
+    endif()
+    set(ENV{LD_LIBRARY_PATH} "${plugin_dir}:${stage}/usr/lib:${qt_lib_dir}:$ENV{LD_LIBRARY_PATH}")
+    run_checked("${deploy_tool}" "${stage}/usr/share/applications/PacketCaptureTool.desktop"
+        "-qmake=@RELEASE_QMAKE@" "-qmldir=@RELEASE_SOURCE_DIR@/src/ui"
+        "-qmlimport=${qml_import_dir}" -bundle-non-qt-libs
+        "-executable=${bin_dir}/qml/FluentUI/${plugin_name}")
+    # The tarball can be launched directly without an AppImage runtime.
+    # linuxdeployqt may have created an AppRun symlink; do not write through it.
+    file(REMOVE "${stage}/AppRun")
+    file(WRITE "${stage}/AppRun" [=[#!/bin/sh
+appdir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) || exit 1
+export LD_LIBRARY_PATH="$appdir/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export QML2_IMPORT_PATH="$appdir/usr/bin/qml${QML2_IMPORT_PATH:+:$QML2_IMPORT_PATH}"
+export QT_PLUGIN_PATH="$appdir/usr/plugins${QT_PLUGIN_PATH:+:$QT_PLUGIN_PATH}"
+exec "$appdir/usr/bin/PacketCaptureTool" "$@"
+]=])
+    run_checked(chmod +x "${stage}/AppRun")
+endif()
+
+file(COPY "@RELEASE_SOURCE_DIR@/docs/extended_fields_example.json"
+    "@RELEASE_SOURCE_DIR@/docs/tcp_stream_example.json"
+    "@RELEASE_SOURCE_DIR@/docs/user_manual.md"
+    "@RELEASE_SOURCE_DIR@/docs/user_manual.en.md" DESTINATION "${stage}/docs")
+execute_process(COMMAND "${CMAKE_COMMAND}" -E tar ${archive_flags} "${archive}" ${archive_format} "${package_name}"
+    WORKING_DIRECTORY "${output_dir}" RESULT_VARIABLE result)
+if(NOT result STREQUAL "0")
+    message(FATAL_ERROR "Archive creation failed: ${result}")
+endif()
+message(STATUS "Release package: ${output_dir}/${archive}")

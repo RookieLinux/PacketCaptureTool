@@ -118,6 +118,11 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     AUTOUIC ON
 )
 
+if(WIN32)
+    # Release runs as a desktop GUI; Debug retains a console for diagnostics.
+    set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE "$<CONFIG:Release>")
+endif()
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Core
     Qt6::Gui
@@ -223,6 +228,9 @@ if (WIN32)
         )
     endif ()
 endif ()
+
+# Explicit release packaging; ordinary builds keep their existing deployment behavior.
+include(ReleasePackaging)
 
 # Enable testing
 enable_testing()

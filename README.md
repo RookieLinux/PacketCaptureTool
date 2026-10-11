@@ -124,6 +124,44 @@ ctest --test-dir cmake-build-release --output-on-failure
 
 测试套件包括 `PacketCaptureTests`、`ConfigurationLoaderTests`、`ProtocolValidationTests`、`TcpStreamTests`、`QmlInterfaceTests`。界面测试采用 offscreen / software 后端；自动化测试覆盖不等于实际网卡长期高吞吐验收。
 
+## Release 发布打包（Windows / Ubuntu）
+
+`package_release` 目标先编译应用，再在独立目录中部署依赖并压缩。仅接受 **Release** 配置；每次重新创建自己的暂存目录，输出到 `<构建目录>/release/`。路径请改为本机安装位置，编译器、Qt `bin` 和 Ninja 需在 `PATH` 中。
+
+### Windows（PowerShell）
+
+```powershell
+cmake -S . -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="D:/Qt/6.6.2/mingw_64" -DWINDEPLOYQT_EXECUTABLE="D:/Qt/6.6.2/mingw_64/bin/windeployqt.exe"
+cmake --build build-release --config Release --target package_release --parallel 4
+```
+
+使用当前已有构建目录：
+
+```powershell
+cmake -S . -B cmake-build-release
+cmake --build cmake-build-release --config Release --target package_release --parallel 4
+```
+
+生成 `PacketCaptureTool-2.0.0-Windows-<架构>.zip`，包含 EXE、Qt 运行库/QML 模块、FluentUI 与仓库内第三方 DLL。`windeployqt` 自动从当前 Qt 套件的 `bin` 查找，也可显式指定。Visual Studio 等多配置生成器必须传入 `--config Release`。目标机器进行实时采集仍需安装 Npcap 驱动。
+
+### Ubuntu（Bash）
+
+先安装编译依赖（如 `build-essential ninja-build git libpcap-dev`）和 Qt 6.4+ 所需模块；下载 [linuxdeployqt](https://github.com/probonopd/linuxdeployqt/releases)，赋予执行权限。如果使用 AppImage 形式的工具，还需要它所要求的 FUSE 环境，也可解包后指定工具路径。
+
+```bash
+chmod +x /opt/tools/linuxdeployqt.AppImage
+export PATH="/opt/Qt/6.6.2/gcc_64/bin:$PATH"
+cmake -S . -B build-release -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_PREFIX_PATH=/opt/Qt/6.6.2/gcc_64 \
+  -DLINUXDEPLOYQT_EXECUTABLE=/opt/tools/linuxdeployqt.AppImage
+cmake --build build-release --config Release --target package_release --parallel 4
+```
+
+生成 `PacketCaptureTool-2.0.0-Linux-<架构>.tar.gz`；解压后运行包内 `./AppRun`。使用当前 Qt 套件的 `qmake`、扫描项目 QML，部署 FluentUI 及非 Qt 依赖；包含 desktop 文件、图标与示例配置。抓包权限需在目标机器单独配置。
+
+`linuxdeployqt` 有构建系统 glibc/Ubuntu 版本限制；请使用所选工具支持的 Ubuntu 构建环境，并验证该版本对当前 Qt 6 套件的兼容性。包不保证能在比构建系统更旧的 Ubuntu 上运行。工具参数参考 [Qt Windows 部署文档](https://doc.qt.io/qt-6/windows-deployment.html) 与 [linuxdeployqt 官方说明](https://github.com/probonopd/linuxdeployqt)。
+
 ## 项目结构与架构
 
 ```text
