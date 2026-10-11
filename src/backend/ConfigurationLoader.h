@@ -16,10 +16,11 @@ public:
     ProtocolConfiguration loadFromFile(const QString& filePath, QString& errorMsg);
     bool saveToFile(const ProtocolConfiguration& config, const QString& filePath, QString& errorMsg);
     bool validateConfig(const ProtocolConfiguration& config, QString& errorMsg);
+    ProtocolConfiguration loadFromJson(const QString& json, QString& errorMsg);
+    QJsonObject toJson(const ProtocolConfiguration& config);
 
 private:
     ProtocolConfiguration parseJson(const QJsonObject& json, QString& errorMsg);
-    QJsonObject toJson(const ProtocolConfiguration& config);
 };
 
 #endif // CONFIGURATIONLOADER_H

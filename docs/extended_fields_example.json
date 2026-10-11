@@ -1,0 +1,11 @@
+{
+    "protocolName": "SensorStatus",
+    "transportType": "UDP",
+    "port": 8080,
+    "length": { "type": "fixed", "fixedValue": 5 },
+    "fields": [
+        { "name": "电压", "offset": 0, "length": 4, "type": "float32", "endianness": "big", "scale": 2, "bias": 1, "unit": "V" },
+        { "name": "状态", "offset": 4, "length": 1, "type": "uint8", "endianness": "big", "bitOffset": 4, "bitWidth": 2, "enumValues": { "2": "就绪" } },
+        { "name": "原始标志", "offset": 4, "length": 1, "type": "uint8", "endianness": "big" }
+    ]
+}

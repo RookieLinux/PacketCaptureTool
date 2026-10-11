@@ -13,6 +13,67 @@ class ConfigurationLoaderTest : public QObject
     Q_OBJECT
 
 private slots:
+    void testExtendedFieldsRoundTripAndValidation() {
+        const QString source=R"({"protocolName":"Extended","transportType":"TCP","port":8080,"length":{"type":"fixed","fixedValue":9},"fields":[{"name":"temperature","offset":0,"length":8,"type":"float64","endianness":"little","scale":0.5,"bias":-10,"unit":"C"},{"name":"state","offset":8,"length":1,"type":"uint8","endianness":"big","bitOffset":2,"bitWidth":3,"enumValues":{"2":"Ready"}}]})";
+        ConfigurationLoader loader; QString error;
+        auto config=loader.loadFromJson(source,error);
+        QVERIFY2(error.isEmpty(),qPrintable(error));
+        QCOMPARE(config.fields[0].type,FieldType::Float64);
+        auto round=loader.loadFromJson(QString::fromUtf8(QJsonDocument(loader.toJson(config)).toJson()),error);
+        QVERIFY(error.isEmpty()); QVERIFY(round == config);
+        config.fields[1].bitOffset=7;
+        QVERIFY(!loader.validateConfig(config,error));
+        config.fields[1].bitOffset=2; config.fields[1].enumValues.insert("8","outside");
+        QVERIFY(!loader.validateConfig(config,error));
+        config.fields[1].enumValues.remove("8"); config.fields[0].length=4;
+        QVERIFY(!loader.validateConfig(config,error));
+        auto json=QJsonDocument::fromJson(source.toUtf8()).object();
+        auto fields=json["fields"].toArray(); auto field=fields[0].toObject(); field["scale"]="bad"; fields[0]=field; json["fields"]=fields;
+        loader.loadFromJson(QString::fromUtf8(QJsonDocument(json).toJson()),error);
+        QVERIFY(!error.isEmpty());
+    }
+    void testRejectMalformedNumericConfiguration_data()
+    {
+        QTest::addColumn<QString>("key");
+        QTest::addColumn<QJsonValue>("value");
+        QTest::newRow("port overflow") << QString("port") << QJsonValue(65536);
+        QTest::newRow("negative port") << QString("port") << QJsonValue(-1);
+        QTest::newRow("text port") << QString("port") << QJsonValue("1234");
+        QTest::newRow("negative payload length") << QString("fixedValue") << QJsonValue(-1);
+        QTest::newRow("fractional offset") << QString("offset") << QJsonValue(0.5);
+        QTest::newRow("missing offset") << QString("offset") << QJsonValue(QJsonValue::Undefined);
+        QTest::newRow("field outside payload") << QString("offset") << QJsonValue(100);
+    }
+
+    void testRejectMalformedNumericConfiguration()
+    {
+        QFETCH(QString, key);
+        QFETCH(QJsonValue, value);
+        auto object = QJsonDocument::fromJson(R"({"protocolName":"Test","transportType":"UDP","port":1234,
+            "length":{"type":"fixed","fixedValue":4},
+            "fields":[{"name":"value","offset":0,"length":2,"type":"uint16","endianness":"big"}]})").object();
+        if (key == "port") object[key] = value;
+        else if (key == "fixedValue") {
+            auto length = object["length"].toObject();
+            length[key] = value;
+            object["length"] = length;
+        } else {
+            auto fields = object["fields"].toArray();
+            auto field = fields[0].toObject();
+            field[key] = value;
+            fields[0] = field;
+            object["fields"] = fields;
+        }
+        QTemporaryFile file;
+        QVERIFY(file.open());
+        file.write(QJsonDocument(object).toJson());
+        file.flush();
+        ConfigurationLoader loader;
+        QString error;
+        loader.loadFromFile(file.fileName(), error);
+        QVERIFY(!error.isEmpty());
+    }
+
     void testLoadValidConfiguration()
     {
         // Create a temporary JSON configuration file
@@ -191,21 +252,22 @@ private slots:
         field1.type = FieldType::UInt32;
         field1.endianness = Endianness::LittleEndian;
         originalConfig.fields.append(field1);
+        originalConfig.fields.append({"length", 4, 2, FieldType::UInt16, Endianness::LittleEndian});
         
         // Save to file
-        QTemporaryFile tempFile;
-        QVERIFY(tempFile.open());
-        tempFile.close(); // Close to allow ConfigurationLoader to write
+        QTemporaryDir tempDirectory;
+        QVERIFY(tempDirectory.isValid());
+        const QString savedPath=tempDirectory.filePath("round-trip.json");
         
         ConfigurationLoader loader;
         QString errorMsg;
-        bool saved = loader.saveToFile(originalConfig, tempFile.fileName(), errorMsg);
+        bool saved = loader.saveToFile(originalConfig, savedPath, errorMsg);
         
         QVERIFY2(saved, errorMsg.toUtf8().constData());
         QVERIFY(errorMsg.isEmpty());
         
         // Load back
-        ProtocolConfiguration loadedConfig = loader.loadFromFile(tempFile.fileName(), errorMsg);
+        ProtocolConfiguration loadedConfig = loader.loadFromFile(savedPath, errorMsg);
         
         QVERIFY(errorMsg.isEmpty());
         

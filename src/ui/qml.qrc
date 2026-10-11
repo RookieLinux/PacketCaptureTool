@@ -1,5 +1,16 @@
 <RCC>
     <qresource prefix="/">
+        <file alias="icons/packet-capture.ico">../resources/icons/packet-capture.ico</file>
+        <file alias="icons/packet-capture.svg">../resources/icons/packet-capture.svg</file>
         <file>MainWindow.qml</file>
+        <file>TitleBarMenuButton.qml</file>
+        <file>HexTextView.qml</file>
+        <file>PacketBrowser.qml</file>
+        <file>AnalysisControls.qml</file>
+        <file>StyledDialog.qml</file>
+        <file>DialogActionBar.qml</file>
+        <file>InterfaceSelector.qml</file>
+        <file>TcpAnalysisDialog.qml</file>
+        <file>ProtocolEditor.qml</file>
     </qresource>
 </RCC>

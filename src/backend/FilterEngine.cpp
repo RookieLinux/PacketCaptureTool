@@ -29,8 +29,10 @@ void FilterEngine::processPacket(const RawPacketOfTool& packet)
             passesTransportFilter = (packet.protocol == TransportProtocol::TCP);
             break;
         case TransportProtocol::Both:
-            passesTransportFilter = (packet.protocol == TransportProtocol::UDP || 
-                                     packet.protocol == TransportProtocol::TCP);
+            passesTransportFilter = true;
+            break;
+        case TransportProtocol::Other:
+            passesTransportFilter = packet.protocol == TransportProtocol::Other;
             break;
     }
     

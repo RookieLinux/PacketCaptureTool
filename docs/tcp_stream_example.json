@@ -1,0 +1,10 @@
+{
+    "protocolName": "TCP4ByteMessage",
+    "transportType": "TCP",
+    "port": 443,
+    "length": { "type": "fixed", "fixedValue": 43 },
+    "fields": [
+        { "name": "消息类型", "offset": 0, "length": 2, "type": "uint16", "endianness": "big" },
+        { "name": "数值", "offset": 2, "length": 2, "type": "uint16", "endianness": "big" }
+    ]
+}

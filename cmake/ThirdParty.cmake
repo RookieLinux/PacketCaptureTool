@@ -1,4 +1,5 @@
 include(AddGitDependency)
+set(CMAKE_PROJECT_fluentuiplugin_INCLUDE "${CMAKE_CURRENT_LIST_DIR}/FluentUiSingletons.cmake")
 
 # -------------------------
 # FluentUI

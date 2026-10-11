@@ -5,13 +5,17 @@
 #include <QByteArray>
 #include <QList>
 #include <QVariant>
+#include <QMap>
 
 // 传输层协议枚举
 enum class TransportProtocol {
     UDP,
     TCP,
-    Both
+    Both,
+    Other
 };
+
+enum class ParseStatus { Unparsed, Unmatched, Parsed, Failed };
 
 // 字段数据类型枚举
 enum class FieldType {
@@ -24,7 +28,9 @@ enum class FieldType {
     Int32,
     Int64,
     String,
-    ByteArray
+    ByteArray,
+    Float32,
+    Float64
 };
 
 // 字节序枚举
@@ -53,15 +59,22 @@ struct NetworkInterface {
 
 // 原始数据包结构体
 struct RawPacketOfTool {
+    quint64 sequence = 0;
+    quint64 sessionId = 0;    // Reject queued packets from a cleared session
+    int linkLayerType = 1;
+    int networkOffset = -1;
+    int transportOffset = -1;
+    int payloadLength = -1;
+    QString protocolName;
     QByteArray data;           // 完整数据包数据
-    qint64 timestamp;          // 捕获时间戳（微秒）
-    quint32 length;            // 数据包长度
-    quint32 headerLength;      // 头部长度（以太网+IP+传输层）
+    qint64 timestamp = 0;      // 捕获时间戳（微秒）
+    quint32 length = 0;        // 数据包长度
+    quint32 headerLength = 0;  // 头部长度（以太网+IP+传输层）
     QString sourceIP;          // 源IP地址
     QString destIP;            // 目标IP地址
-    quint16 sourcePort;        // 源端口
-    quint16 destPort;          // 目标端口
-    TransportProtocol protocol; // UDP或TCP
+    quint16 sourcePort = 0;    // 源端口
+    quint16 destPort = 0;      // 目标端口
+    TransportProtocol protocol = TransportProtocol::UDP;
     
     // 相等性比较运算符（用于测试）
     bool operator==(const RawPacketOfTool& other) const {
@@ -83,6 +96,8 @@ struct RawPacketOfTool {
 
 // 解析后的字段结构体
 struct ParsedField {
+    quint32 offset = 0;             // Offset within the captured frame
+    quint32 length = 0;
     QString name;                    // 字段名称
     QVariant value;                  // 字段值
     QString type;                    // 字段类型
@@ -103,7 +118,8 @@ struct ParsedField {
 
 // 解析后的数据包结构体
 struct ParsedPacket {
-    bool isValid;                    // 解析是否成功
+    ParseStatus status = ParseStatus::Unparsed;
+    bool isValid = false;            // 解析是否成功
     QString errorMessage;            // 错误信息
     QList<ParsedField> fields;       // 解析的字段列表
     QByteArray rawData;              // 原始数据
@@ -124,10 +140,16 @@ struct ParsedPacket {
 // 字段定义结构体
 struct FieldDefinition {
     QString name;                    // 字段名称
-    quint32 offset;                  // 字节偏移量
-    quint32 length;                  // 字段长度（字节）
-    FieldType type;                  // 数据类型
-    Endianness endianness;           // 字节序
+    quint32 offset = 0;              // 字节偏移量
+    quint32 length = 0;              // 字段长度（字节）
+    FieldType type = FieldType::ByteArray;
+    Endianness endianness = Endianness::BigEndian;
+    quint32 bitOffset = 0;           // From least significant bit after endian conversion
+    quint32 bitWidth = 0;            // Zero means use the whole unsigned integer
+    double scale = 1.0;
+    double bias = 0.0;
+    QString unit;
+    QMap<QString, QString> enumValues; // Decimal raw-value strings preserve 64-bit keys
     
     // 相等性比较运算符（用于测试）
     bool operator==(const FieldDefinition& other) const {
@@ -135,7 +157,8 @@ struct FieldDefinition {
                offset == other.offset &&
                length == other.length &&
                type == other.type &&
-               endianness == other.endianness;
+               endianness == other.endianness && bitOffset == other.bitOffset && bitWidth == other.bitWidth &&
+               scale == other.scale && bias == other.bias && unit == other.unit && enumValues == other.enumValues;
     }
     
     bool operator!=(const FieldDefinition& other) const {
@@ -146,14 +169,14 @@ struct FieldDefinition {
 // 协议配置结构体
 struct ProtocolConfiguration {
     QString protocolName;            // 协议名称
-    TransportProtocol transportType; // 传输层协议类型
-    quint16 port;                    // 端口号
+    TransportProtocol transportType = TransportProtocol::UDP;
+    quint16 port = 0;                // 端口号
     
     // 包长度配置
-    bool isFixedLength;              // 是否固定长度
-    quint32 fixedLength;             // 固定长度值(不包含各种网络首部)
+    bool isFixedLength = false;      // 是否固定长度
+    quint32 fixedLength = 0;         // 固定长度值(不包含各种网络首部)
     QString lengthFieldName;         // 长度字段名称
-    quint32 lengthFieldOffset;       // 长度字段偏移量
+    quint32 lengthFieldOffset = 0;   // 长度字段偏移量
     
     // 字段定义
     QList<FieldDefinition> fields;

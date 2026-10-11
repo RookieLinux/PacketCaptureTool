@@ -1,10 +1,10 @@
 {
     "protocolName": "TestProtocol",
     "transportType": "UDP",
-    "port": 4430,
+    "port": 53744,
     "length": {
         "type": "fixed",
-        "fixedValue": 29
+        "fixedValue": 347
     },
     "fields": [
         {

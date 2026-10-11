@@ -39,7 +39,7 @@ configure_file(
     ${PROJECT_SOURCE_DIR}/src/build_info.h
 )
 
-find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Qml Quick QuickControls2 QuickDialogs2) #Network
+find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Widgets Qml Quick QuickControls2 QuickDialogs2 LinguistTools) #Network
 include(ThirdParty)
 
 include_directories(SYSTEM BEFORE
@@ -61,8 +61,10 @@ include_directories(BEFORE
 
 set(BACKEND_SOURCES
     src/backend/PacketCaptureEngine.cpp
+    src/backend/CaptureArchive.cpp
     src/backend/FilterEngine.cpp
     src/backend/ProtocolParser.cpp
+    src/backend/TcpStreamAnalyzer.cpp
     src/backend/ConfigurationLoader.cpp
     src/backend/CaptureController.cpp
     src/backend/PacketModel.cpp
@@ -83,10 +85,32 @@ set(QML_RESOURCES
 
 add_executable(${PROJECT_NAME}
     src/main.cpp
+    src/backend/LanguageSettings.cpp
+    src/backend/LanguageSettings.h
+    src/backend/SettingsStorage.cpp
+    src/backend/SettingsStorage.h
+    src/backend/DesktopIntegration.cpp
+    src/backend/DesktopIntegration.h
     ${BACKEND_SOURCES}
     ${BACKEND_HEADERS}
     ${QML_RESOURCES}
 )
+
+if(WIN32)
+    enable_language(RC)
+    target_sources(${PROJECT_NAME} PRIVATE src/resources/app.rc)
+    target_include_directories(${PROJECT_NAME} PRIVATE src/resources)
+endif()
+
+set(EN_TRANSLATION "${CMAKE_CURRENT_BINARY_DIR}/app_en.qm")
+add_custom_command(OUTPUT "${EN_TRANSLATION}"
+    COMMAND Qt6::lrelease "${PROJECT_SOURCE_DIR}/src/i18n/app_en.ts" -qm "${EN_TRANSLATION}"
+    DEPENDS "${PROJECT_SOURCE_DIR}/src/i18n/app_en.ts"
+    VERBATIM)
+add_custom_target(AppTranslations DEPENDS "${EN_TRANSLATION}")
+qt_add_resources(${PROJECT_NAME} app_translations PREFIX "/i18n"
+    BASE "${CMAKE_CURRENT_BINARY_DIR}" FILES "${EN_TRANSLATION}")
+add_dependencies(${PROJECT_NAME} AppTranslations)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
     AUTOMOC ON
@@ -97,6 +121,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 target_link_libraries(${PROJECT_NAME} PRIVATE
     Qt6::Core
     Qt6::Gui
+    Qt6::Widgets
     Qt6::Qml
     Qt6::Quick
     Qt6::QuickControls2
@@ -156,6 +181,7 @@ function(deploy_dependencies target_name)
                 --no-translations
                 --compiler-runtime
                 --qmldir "${PROJECT_SOURCE_DIR}/src/ui"
+                --qmlimport "${PROJECT_BINARY_DIR}/_deps/FluentUI-build/src/qml"
                 "$<TARGET_FILE:${target_name}>"
                 COMMENT "Running windeployqt for ${target_name}"
             )
