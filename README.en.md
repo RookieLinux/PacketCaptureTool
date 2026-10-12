@@ -137,13 +137,10 @@ Test suites: `PacketCaptureTests`, `ConfigurationLoaderTests`, `ProtocolValidati
 │   ├── i18n/       # English translation source app_en.ts
 │   └── resources/  # SVG, PNG, ICO and Windows icon resources
 ├── tests/          # Qt Test automated checks
-├── tools/          # Icon generation utility
 └── CMakeLists.txt
 ```
 
 QML provides interaction and presentation. `CaptureController` coordinates sessions and background tasks; `PacketModel` supplies the analysis list. `PacketCaptureEngine`, `CaptureArchive`, `ProtocolParser`, and `TcpStreamAnalyzer` handle capture, archiving, field parsing, and reassembly respectively. `SettingsStorage` and `LanguageSettings` manage settings and language; `DesktopIntegration` manages the tray.
-
-Icon sources are in `src/resources/icons/`. With Pillow installed, run `python tools/generate_app_icon.py` to regenerate PNG/ICO assets.
 
 ## Documentation
 

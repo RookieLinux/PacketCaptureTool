@@ -175,13 +175,10 @@ cmake --build build-release --config Release --target package_release --parallel
 │   ├── i18n/       # 英文翻译源文件 app_en.ts
 │   └── resources/  # SVG、PNG、ICO 和 Windows 图标资源
 ├── tests/          # Qt Test 自动化验证
-├── tools/          # 图标生成工具
 └── CMakeLists.txt
 ```
 
 QML 负责交互展示，`CaptureController` 协调会话和后台任务，`PacketModel` 提供分析列表；`PacketCaptureEngine`、`CaptureArchive`、`ProtocolParser`、`TcpStreamAnalyzer` 分别负责采集、归档、字段解析和流重组。设置与语言由 `SettingsStorage`、`LanguageSettings` 管理，托盘由 `DesktopIntegration` 管理。
-
-图标源位于 `src/resources/icons/`，安装 Pillow 后可用 `python tools/generate_app_icon.py` 重新生成 PNG/ICO。
 
 ## 文档索引
 
