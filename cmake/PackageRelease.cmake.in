@@ -90,10 +90,42 @@ else()
     if(NOT result STREQUAL "0")
         message(FATAL_ERROR "Cannot query Qt libraries using @RELEASE_QMAKE@")
     endif()
+    # linuxdeployqt deploys every SQL driver when a QML dependency brings in
+    # QtSql. Only SQLite may be needed here; other drivers require external
+    # database clients (e.g. libmimerapi.so) that this application does not use.
+    # -exclude-libs matches plugin base names before running ldd on them.
+    execute_process(COMMAND "@RELEASE_QMAKE@" -query QT_INSTALL_PLUGINS
+        OUTPUT_VARIABLE qt_plugin_dir OUTPUT_STRIP_TRAILING_WHITESPACE RESULT_VARIABLE result)
+    if(NOT result STREQUAL "0" OR NOT IS_DIRECTORY "${qt_plugin_dir}")
+        message(FATAL_ERROR "Cannot locate Qt plugins using @RELEASE_QMAKE@")
+    endif()
+    file(GLOB sql_drivers "${qt_plugin_dir}/sqldrivers/libqsql*.so")
+    set(excluded_sql_drivers)
+    foreach(driver IN LISTS sql_drivers)
+        get_filename_component(driver_name "${driver}" NAME_WE)
+        if(NOT driver_name STREQUAL "libqsqlite")
+            list(APPEND excluded_sql_drivers "${driver_name}")
+        endif()
+    endforeach()
+    set(sql_deploy_args)
+    if(excluded_sql_drivers)
+        list(JOIN excluded_sql_drivers "," excluded_sql_drivers_csv)
+        list(APPEND sql_deploy_args "-exclude-libs=${excluded_sql_drivers_csv}")
+        message(STATUS "Excluding unused Qt SQL drivers: ${excluded_sql_drivers_csv}")
+    endif()
+    # Some linuxdeployqt versions miss Qt 6's implicit QtQml imports (notably
+    # WorkerScript). Stage the base module before deployment so its plugins and
+    # their shared-library dependencies are also processed by linuxdeployqt.
+    execute_process(COMMAND "@RELEASE_QMAKE@" -query QT_INSTALL_QML
+        OUTPUT_VARIABLE qt_qml_dir OUTPUT_STRIP_TRAILING_WHITESPACE RESULT_VARIABLE result)
+    if(NOT result STREQUAL "0" OR NOT EXISTS "${qt_qml_dir}/QtQml/WorkerScript/qmldir")
+        message(FATAL_ERROR "Cannot locate QtQml modules using @RELEASE_QMAKE@")
+    endif()
+    file(COPY "${qt_qml_dir}/QtQml" DESTINATION "${stage}/usr/qml")
     set(ENV{LD_LIBRARY_PATH} "${plugin_dir}:${stage}/usr/lib:${qt_lib_dir}:$ENV{LD_LIBRARY_PATH}")
     run_checked("${deploy_tool}" "${stage}/usr/share/applications/PacketCaptureTool.desktop"
         "-qmake=@RELEASE_QMAKE@" "-qmldir=@RELEASE_SOURCE_DIR@/src/ui"
-        "-qmlimport=${qml_import_dir}" -bundle-non-qt-libs
+        "-qmlimport=${qml_import_dir}" -bundle-non-qt-libs ${sql_deploy_args}
         "-executable=${bin_dir}/qml/FluentUI/${plugin_name}")
     # The tarball can be launched directly without an AppImage runtime.
     # linuxdeployqt may have created an AppRun symlink; do not write through it.

@@ -131,6 +131,15 @@ The `package_release` target updates `src/i18n/app_en.ts` with the Qt kit's
 deploys and archives it under `<build-dir>/release/`. It requires Release and
 `windeployqt` on Windows or `linuxdeployqt` on Ubuntu.
 
+Linux packaging retains SQLite and excludes the Qt kit's other SQL drivers
+using `linuxdeployqt -exclude-libs`, avoiding failures caused by unused database
+client dependencies such as `libmimerapi.so`. No Qt installation files need to
+be removed. If another database is added, update the driver filter in
+`cmake/PackageRelease.cmake.in` and install its client libraries.
+The script also stages the Qt kit's QtQml base modules before dependency
+deployment, covering implicit Qt 6 imports such as `QtQml.WorkerScript` that
+some linuxdeployqt versions miss.
+
 ```powershell
 cmake --build cmake-build-release --config Release --target package_release
 ```

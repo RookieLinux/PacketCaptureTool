@@ -168,6 +168,10 @@ cmake --build build-release --config Release --target package_release --parallel
 
 生成 `PacketCaptureTool-2.0.0-Linux-<架构>.tar.gz`；解压后运行包内 `./AppRun`。使用当前 Qt 套件的 `qmake`、扫描项目 QML，部署 FluentUI 及非 Qt 依赖；包含 desktop 文件、图标与示例配置。抓包权限需在目标机器单独配置。
 
+Linux 打包保留 SQLite 驱动，并通过 `linuxdeployqt -exclude-libs` 排除当前 Qt 套件中其他 SQL 驱动，避免未使用的 Mimer、MySQL、ODBC、PostgreSQL 等驱动因缺少外部客户端库而中止打包（如 `libmimerapi.so => not found`）。无需删除 Qt 安装目录中的插件。若以后引入其他数据库，应调整 `cmake/PackageRelease.cmake.in` 中的驱动筛选并安装对应客户端库。
+
+脚本也会预先暂存当前 Qt 套件的 QtQml 基础模块，再交由部署工具处理依赖，避免部分 `linuxdeployqt` 版本漏部署 Qt 6 的隐式导入而导致启动时报 `QtQml.WorkerScript` 未安装。
+
 `linuxdeployqt` 有构建系统 glibc/Ubuntu 版本限制；请使用所选工具支持的 Ubuntu 构建环境，并验证该版本对当前 Qt 6 套件的兼容性。包不保证能在比构建系统更旧的 Ubuntu 上运行。工具参数参考 [Qt Windows 部署文档](https://doc.qt.io/qt-6/windows-deployment.html) 与 [linuxdeployqt 官方说明](https://github.com/probonopd/linuxdeployqt)。
 
 ## 项目结构与架构
