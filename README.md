@@ -105,7 +105,7 @@
 ```powershell
 git clone https://github.com/RookieLinux/PacketCaptureTool.git
 cd PacketCaptureTool
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="D:/Qt/6.6.2/mingw_64" -DWINDEPLOYQT_EXECUTABLE="D:/Qt/6.6.2/mingw_64/bin/windeployqt.exe"
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER="D:/Qt/Qt6.6.2/Tools/mingw1120_64/bin/gcc.exe" -DCMAKE_CXX_COMPILER="D:/Qt/Qt6.6.2/Tools/mingw1120_64/bin/g++.exe" -DCMAKE_PREFIX_PATH="D:/Qt/6.6.2/mingw_64" -DWINDEPLOYQT_EXECUTABLE="D:/Qt/6.6.2/mingw_64/bin/windeployqt.exe"
 cmake --build build --parallel 4
 ctest --test-dir build --output-on-failure
 .\build\PacketCaptureTool.exe
@@ -139,14 +139,14 @@ cmake --build cmake-build-release --config Release --target update_app_translati
 ### Windows（PowerShell）
 
 ```powershell
-cmake -S . -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="D:/Qt/6.6.2/mingw_64" -DWINDEPLOYQT_EXECUTABLE="D:/Qt/6.6.2/mingw_64/bin/windeployqt.exe"
+cmake -S . -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER="D:/Qt/Qt6.6.2/Tools/mingw1120_64/bin/gcc.exe" -DCMAKE_CXX_COMPILER="D:/Qt/Qt6.6.2/Tools/mingw1120_64/bin/g++.exe" -DCMAKE_PREFIX_PATH="D:/Qt/6.6.2/mingw_64" -DWINDEPLOYQT_EXECUTABLE="D:/Qt/6.6.2/mingw_64/bin/windeployqt.exe"
 cmake --build build-release --config Release --target package_release --parallel 4
 ```
 
 使用当前已有构建目录：
 
 ```powershell
-cmake -S . -B cmake-build-release
+cmake -S . -B cmake-build-release -DCMAKE_C_COMPILER="D:/Qt/Qt6.6.2/Tools/mingw1120_64/bin/gcc.exe" -DCMAKE_CXX_COMPILER="D:/Qt/Qt6.6.2/Tools/mingw1120_64/bin/g++.exe"
 cmake --build cmake-build-release --config Release --target package_release --parallel 4
 ```
 
