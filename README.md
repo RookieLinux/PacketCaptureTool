@@ -126,7 +126,15 @@ ctest --test-dir cmake-build-release --output-on-failure
 
 ## Release 发布打包（Windows / Ubuntu）
 
-`package_release` 目标先编译应用，再在独立目录中部署依赖并压缩。仅接受 **Release** 配置；每次重新创建自己的暂存目录，输出到 `<构建目录>/release/`。路径请改为本机安装位置，编译器、Qt `bin` 和 Ninja 需在 `PATH` 中。
+`package_release` 目标先用当前 Qt 套件的 `lupdate` 扫描 `src/` 下的 C++ / QML 等源码，生成或更新 `src/i18n/app_en.ts`，再用 `lrelease` 生成 `.qm` 并编译嵌入应用，最后在独立目录中部署依赖并压缩。仅接受 **Release** 配置；每次重新创建自己的暂存目录，输出到 `<构建目录>/release/`。路径请改为本机安装位置，编译器、Qt `bin` 和 Ninja 需在 `PATH` 中。
+
+普通编译只将现有 `.ts` 编译为 `.qm`，不更新翻译源文件。开发期间可以单独提取翻译文本：
+
+```powershell
+cmake --build cmake-build-release --config Release --target update_app_translations
+```
+
+`lupdate` 保留已有译文，新文本仍需用 Qt Linguist 手工翻译；打包不会自动翻译。更新后的 `.ts` 应检查并纳入版本控制，`clean` 不会删除它。
 
 ### Windows（PowerShell）
 

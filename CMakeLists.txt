@@ -42,24 +42,10 @@ configure_file(
 find_package(Qt6 6.4 REQUIRED COMPONENTS Core Gui Widgets Qml Quick QuickControls2 QuickDialogs2 LinguistTools) #Network
 include(ThirdParty)
 
-include_directories(SYSTEM BEFORE
-    ${PROJECT_SOURCE_DIR}/3rdparty/gitrep/FluentUI/src
-    ${PROJECT_SOURCE_DIR}/3rdparty/gitrep/PcapPlusPlus/Common++/header
-    ${PROJECT_SOURCE_DIR}/3rdparty/gitrep/PcapPlusPlus/Packet++/header
-    ${PROJECT_SOURCE_DIR}/3rdparty/gitrep/PcapPlusPlus/Pcap++/header
-)
-
-if (CMAKE_HOST_WIN32)
-    include_directories(SYSTEM BEFORE
-        ${PCAP_ROOT}/Include
-    )
-endif ()
-include_directories(BEFORE
-    ${PROJECT_SOURCE_DIR}/src/backend
-    ${PROJECT_SOURCE_DIR}/src/ui
-)
-
 set(BACKEND_SOURCES
+    src/backend/LanguageSettings.cpp
+    src/backend/SettingsStorage.cpp
+    src/backend/DesktopIntegration.cpp
     src/backend/PacketCaptureEngine.cpp
     src/backend/CaptureArchive.cpp
     src/backend/FilterEngine.cpp
@@ -71,6 +57,9 @@ set(BACKEND_SOURCES
 )
 
 set(BACKEND_HEADERS
+    src/backend/LanguageSettings.h
+    src/backend/SettingsStorage.h
+    src/backend/DesktopIntegration.h
     src/backend/PacketCaptureEngine.h
     src/backend/FilterEngine.h
     src/backend/ProtocolParser.h
@@ -85,15 +74,15 @@ set(QML_RESOURCES
 
 add_executable(${PROJECT_NAME}
     src/main.cpp
-    src/backend/LanguageSettings.cpp
-    src/backend/LanguageSettings.h
-    src/backend/SettingsStorage.cpp
-    src/backend/SettingsStorage.h
-    src/backend/DesktopIntegration.cpp
-    src/backend/DesktopIntegration.h
     ${BACKEND_SOURCES}
     ${BACKEND_HEADERS}
     ${QML_RESOURCES}
+)
+
+# Dependency headers are supplied by the linked targets' usage requirements.
+target_include_directories(${PROJECT_NAME} PRIVATE
+    "${PROJECT_SOURCE_DIR}/src/backend"
+    "${PROJECT_SOURCE_DIR}/src/ui"
 )
 
 if(WIN32)
@@ -102,15 +91,27 @@ if(WIN32)
     target_include_directories(${PROJECT_NAME} PRIVATE src/resources)
 endif()
 
+set(APP_TRANSLATION_SOURCE "${PROJECT_SOURCE_DIR}/src/i18n/app_en.ts")
+# Explicitly invoked by developers and release packaging, not ordinary builds.
+# Do not declare the version-controlled TS file as a build byproduct: clean
+# must not remove it. Scan application sources only (including C++ and QML).
+add_custom_target(update_app_translations
+    COMMAND Qt6::lupdate "${PROJECT_SOURCE_DIR}/src"
+        -extensions cpp,h,qml,js,ui
+        -locations none -source-language zh_CN -target-language en_US
+        -ts "${APP_TRANSLATION_SOURCE}"
+    COMMENT "Updating application TS translations"
+    VERBATIM)
+
 set(EN_TRANSLATION "${CMAKE_CURRENT_BINARY_DIR}/app_en.qm")
 add_custom_command(OUTPUT "${EN_TRANSLATION}"
-    COMMAND Qt6::lrelease "${PROJECT_SOURCE_DIR}/src/i18n/app_en.ts" -qm "${EN_TRANSLATION}"
-    DEPENDS "${PROJECT_SOURCE_DIR}/src/i18n/app_en.ts"
+    COMMAND Qt6::lrelease "${APP_TRANSLATION_SOURCE}" -qm "${EN_TRANSLATION}"
+    DEPENDS "${APP_TRANSLATION_SOURCE}"
     VERBATIM)
-add_custom_target(AppTranslations DEPENDS "${EN_TRANSLATION}")
-qt_add_resources(${PROJECT_NAME} app_translations PREFIX "/i18n"
+add_custom_target(app_translations DEPENDS "${EN_TRANSLATION}")
+qt_add_resources(${PROJECT_NAME} app_translations_resources PREFIX "/i18n"
     BASE "${CMAKE_CURRENT_BINARY_DIR}" FILES "${EN_TRANSLATION}")
-add_dependencies(${PROJECT_NAME} AppTranslations)
+add_dependencies(${PROJECT_NAME} app_translations)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
     AUTOMOC ON
@@ -147,22 +148,6 @@ function(deploy_dependencies target_name)
         # 拷贝第三方库到可执行文件同目录
         if (MINGW)
             file(GLOB_RECURSE 3RDPARTY_DLL_DIR ${PROJECT_SOURCE_DIR}/3rdparty/mingw/*.dll)
-
-            set(MINGW_RUNTIME_DLL_NAMES
-                libgcc_s_dw2-1.dll
-                libgcc_s_seh-1.dll
-                libstdc++-6.dll
-                libwinpthread-1.dll
-            )
-
-            set(filtered_dlls)
-            foreach (dll_file IN LISTS 3RDPARTY_DLL_DIR)
-                get_filename_component(dll_name "${dll_file}" NAME)
-                if (NOT dll_name IN_LIST MINGW_RUNTIME_DLL_NAMES)
-                    list(APPEND filtered_dlls "${dll_file}")
-                endif ()
-            endforeach ()
-            set(3RDPARTY_DLL_DIR "${filtered_dlls}")
         elseif (MSVC)
             if (CMAKE_SIZEOF_VOID_P EQUAL 4)
                 file(GLOB_RECURSE 3RDPARTY_DLL_DIR ${PROJECT_SOURCE_DIR}/3rdparty/msvc/x86/*.dll)
@@ -194,11 +179,11 @@ function(deploy_dependencies target_name)
     endif ()
 endfunction()
 
-target_compile_options(${PROJECT_NAME} PRIVATE
-    -Wall
-    -Wextra
-    -Wpedantic
-)
+if(MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE /W4)
+else()
+    target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic)
+endif()
 
 # Use function to deploy dependencies
 if (WIN32)

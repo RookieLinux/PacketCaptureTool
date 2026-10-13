@@ -18,6 +18,7 @@ endif()
 set(RELEASE_SOURCE_DIR "${PROJECT_SOURCE_DIR}")
 set(RELEASE_BINARY_DIR "${PROJECT_BINARY_DIR}")
 set(RELEASE_VERSION "${PROJECT_VERSION}")
+set(RELEASE_APP_TARGET "${PROJECT_NAME}")
 set(RELEASE_SYSTEM "${CMAKE_SYSTEM_NAME}")
 set(RELEASE_ARCH "${CMAKE_SYSTEM_PROCESSOR}")
 set(RELEASE_POINTER_SIZE "${CMAKE_SIZEOF_VOID_P}")
@@ -30,12 +31,16 @@ endif()
 configure_file("${CMAKE_CURRENT_LIST_DIR}/PackageRelease.cmake.in"
     "${PROJECT_BINARY_DIR}/PackageRelease.cmake" @ONLY)
 
+# Resolve paths without TARGET_FILE expressions in the custom target command:
+# those expressions would implicitly build the application before TS updates.
+file(GENERATE OUTPUT "${PROJECT_BINARY_DIR}/ReleaseInputs-$<CONFIG>.cmake"
+    CONTENT "set(RELEASE_APP \"$<TARGET_FILE:${PROJECT_NAME}>\")\nset(RELEASE_PLUGIN \"$<TARGET_FILE:fluentuiplugin>\")\n")
+
 add_custom_target(package_release
     COMMAND "${CMAKE_COMMAND}"
         "-DRELEASE_CONFIG=$<CONFIG>"
-        "-DRELEASE_APP=$<TARGET_FILE:${PROJECT_NAME}>"
-        "-DRELEASE_PLUGIN=$<TARGET_FILE:fluentuiplugin>"
         -P "${PROJECT_BINARY_DIR}/PackageRelease.cmake"
-    DEPENDS ${PROJECT_NAME} fluentuiplugin
+    # The script updates TS first, then builds the application. Parallel
+    # DEPENDS here would allow the executable to embed the previous QM file.
     COMMENT "Deploying and packaging PacketCaptureTool Release"
     VERBATIM USES_TERMINAL)

@@ -124,6 +124,27 @@ ctest --test-dir cmake-build-release --output-on-failure
 
 Test suites: `PacketCaptureTests`, `ConfigurationLoaderTests`, `ProtocolValidationTests`, `TcpStreamTests`, and `QmlInterfaceTests`. UI tests use offscreen / software rendering. Automated coverage does not establish sustained high-throughput performance on physical interfaces.
 
+## Release packaging (Windows / Ubuntu)
+
+The `package_release` target updates `src/i18n/app_en.ts` with the Qt kit's
+`lupdate`, compiles it into an embedded `.qm`, builds the application, then
+deploys and archives it under `<build-dir>/release/`. It requires Release and
+`windeployqt` on Windows or `linuxdeployqt` on Ubuntu.
+
+```powershell
+cmake --build cmake-build-release --config Release --target package_release
+```
+
+Ordinary builds compile the existing TS file without updating it. To extract
+translation strings separately:
+
+```powershell
+cmake --build cmake-build-release --config Release --target update_app_translations
+```
+
+Existing translations are retained; new strings still require translation in
+Qt Linguist. Review and commit updated TS files. The clean target preserves them.
+
 ## Structure and architecture
 
 ```text

@@ -3,22 +3,30 @@ cmake_minimum_required(VERSION 3.16)
 if(NOT RELEASE_CONFIG STREQUAL "Release")
     message(FATAL_ERROR "package_release requires Release. Configure with -DCMAKE_BUILD_TYPE=Release (single-config), or build with --config Release (multi-config).")
 endif()
+include("@RELEASE_BINARY_DIR@/ReleaseInputs-${RELEASE_CONFIG}.cmake")
 set(deploy_tool "@RELEASE_DEPLOY_TOOL@")
 if(NOT EXISTS "${deploy_tool}")
     message(FATAL_ERROR "Deployment tool missing. Configure WINDEPLOYQT_EXECUTABLE (Windows) or LINUXDEPLOYQT_EXECUTABLE (Ubuntu), then rerun CMake.")
 endif()
-foreach(input IN ITEMS "${RELEASE_APP}" "${RELEASE_PLUGIN}" "@RELEASE_FLUENT_QML_DIR@/qmldir")
-    if(NOT EXISTS "${input}")
-        message(FATAL_ERROR "Release input missing: ${input}")
-    endif()
-endforeach()
-
 function(run_checked)
     execute_process(COMMAND ${ARGV} RESULT_VARIABLE result)
     if(NOT result STREQUAL "0")
         message(FATAL_ERROR "Release command failed (${result}): ${ARGV}")
     endif()
 endfunction()
+
+# Updating TS and building must be separate, ordered steps: the build tool
+# needs to see the updated TS timestamp before deciding whether to run lrelease.
+run_checked("${CMAKE_COMMAND}" --build "@RELEASE_BINARY_DIR@"
+    --config "${RELEASE_CONFIG}" --target update_app_translations)
+run_checked("${CMAKE_COMMAND}" --build "@RELEASE_BINARY_DIR@"
+    --config "${RELEASE_CONFIG}" --target "@RELEASE_APP_TARGET@")
+
+foreach(input IN ITEMS "${RELEASE_APP}" "${RELEASE_PLUGIN}" "@RELEASE_FLUENT_QML_DIR@/qmldir")
+    if(NOT EXISTS "${input}")
+        message(FATAL_ERROR "Release input missing: ${input}")
+    endif()
+endforeach()
 
 set(package_name "PacketCaptureTool-@RELEASE_VERSION@-@RELEASE_SYSTEM@-@RELEASE_ARCH@")
 set(output_dir "@RELEASE_BINARY_DIR@/release")

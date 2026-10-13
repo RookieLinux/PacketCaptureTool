@@ -1,15 +1,8 @@
 # Test configuration
-find_package(Qt6 REQUIRED COMPONENTS Test Widgets PrintSupport)
+find_package(Qt6 REQUIRED COMPONENTS Test Network Widgets PrintSupport)
 
 # Enable Qt Test
 set(CMAKE_AUTOMOC ON)
-
-include_directories(SYSTEM BEFORE
-        ${PcapPlusPlus_SOURCE_DIR}/Common++/header
-        ${PcapPlusPlus_SOURCE_DIR}/Packet++/header
-        ${PcapPlusPlus_SOURCE_DIR}/Pcap++/header
-)
-include_directories(${PROJECT_SOURCE_DIR}/src/backend)
 
 # Test1
 add_executable(PacketCaptureTests
@@ -92,7 +85,7 @@ add_executable(QmlInterfaceTests
 )
 qt_add_resources(QmlInterfaceTests test_translations PREFIX "/i18n"
     BASE "${PROJECT_BINARY_DIR}" FILES "${EN_TRANSLATION}")
-add_dependencies(QmlInterfaceTests AppTranslations)
+add_dependencies(QmlInterfaceTests app_translations)
 set_target_properties(QmlInterfaceTests PROPERTIES AUTORCC ON)
 target_link_libraries(QmlInterfaceTests PRIVATE
     Qt6::Test Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::Network Qt6::Widgets Qt6::PrintSupport
@@ -119,3 +112,9 @@ set_tests_properties(QmlInterfaceTests PROPERTIES
     ENVIRONMENT "QT_QPA_PLATFORM=offscreen;QT_QUICK_BACKEND=software"
     TIMEOUT 30
 )
+
+foreach(test_target IN ITEMS PacketCaptureTests ConfigurationLoaderTests
+        ProtocolValidationTests TcpStreamTests QmlInterfaceTests)
+    target_include_directories(${test_target} PRIVATE
+        "${PROJECT_SOURCE_DIR}/src/backend")
+endforeach()
